@@ -15,6 +15,14 @@
 import pandas as pd
 import numpy as np
 import json, os, webbrowser
+import zipfile
+
+ZIP_GEO = "regional_shp.zip"
+
+if not os.path.exists(F_SHP) and os.path.exists(ZIP_GEO):
+    print("Extrayendo shapefile regional...")
+    with zipfile.ZipFile(ZIP_GEO, 'r') as z:
+        z.extractall(".")
 
 # Posicionarse en la carpeta del script para que los paths relativos funcionen
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
