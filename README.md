@@ -19,7 +19,7 @@ Instalar Python 3.10 o superior.
 Instalar librerías necesarias:
 
 ```bash
-pip install pandas numpy plotly geopandas openpyxl
+pip install pandas numpy plotly openpyxl pyshp
 ```
 
 ---
@@ -73,7 +73,7 @@ en cualquier navegador web.
 - Python
 - Pandas
 - Plotly
-- GeoPandas
+- pyshp (lectura de shapefiles)
 - HTML/CSS/JavaScript
 
 ---
