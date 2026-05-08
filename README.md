@@ -82,5 +82,5 @@ en cualquier navegador web.
 
 Ignacio Ureta
 
-Memoria de título — Ingeniería Comercial  
+Memoria de título — Ingeniería Civil Industrial  
 Universidad de los Andes
