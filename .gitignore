@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv/
+env/
+
+Regional.geojson
+Regional.shp
+Regional.dbf
+Regional.shx
+Regional.sbn
+Regional.sbx
+Regional.prj
+Regional.cpg
+Regional.shp.xml
+
+~$*.xlsx
