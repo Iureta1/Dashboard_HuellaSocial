@@ -17,13 +17,6 @@ import numpy as np
 import json, os, webbrowser
 import zipfile
 
-ZIP_GEO = "regional_shp.zip"
-
-if not os.path.exists(F_SHP) and os.path.exists(ZIP_GEO):
-    print("Extrayendo shapefile regional...")
-    with zipfile.ZipFile(ZIP_GEO, 'r') as z:
-        z.extractall(".")
-
 # Posicionarse en la carpeta del script para que los paths relativos funcionen
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
@@ -32,10 +25,18 @@ F_CAC     = "consolidado_CAC_balances_resultados_v2.xlsx"
 F_PANEL   = "Consolidado_cooperativas.xlsx"
 F_GEOJSON = "Regional.geojson"
 F_SHP     = "Regional.shp"
+ZIP_GEO   = "regional_shp.zip"
 OUT       = "dashboard_huella_v5.html"
+
+# Extraer shapefile si no existe pero hay un zip (útil al clonar desde GitHub)
+if not os.path.exists(F_SHP) and os.path.exists(ZIP_GEO):
+    print("Extrayendo shapefile regional...")
+    with zipfile.ZipFile(ZIP_GEO, "r") as z:
+        z.extractall(".")
 
 # ── PARÁMETROS SCN (§4.3.2 memoria) ─────────────────────────────────────────
 ALPHA_CI = 0.3776   # CI/P — MIP Chile 2018 sector 94 (Intermediación financiera)
+N_MIN    = 3        # Umbral mínimo de entidades para incluir un año en gráficos sectoriales
 
 # ── PALETA ───────────────────────────────────────────────────────────────────
 C = dict(
@@ -197,6 +198,14 @@ sector = sector.merge(mora_yr, on="Año", how="left") \
                .merge(f2_yr,   on="Año", how="left") \
                .merge(f4_yr,   on="Año", how="left") \
                .merge(act_yr,  on="Año", how="left")
+
+# ── Promedios por entidad (eliminan sesgo de cobertura) ───────────────────────
+for col in ["P1_MM","P2_MM","B1g_MM","D1_MM","P51d_MM","B2g_MM","B1n_MM","Rem_MM"]:
+    sector[col.replace("_MM","_avg")] = (sector[col] / sector["N"]).round(2)
+
+# ── Sector filtrado: solo años con N ≥ N_MIN (después de todos los merges) ────
+sector_filt = sector[sector["N"] >= N_MIN].copy()
+print(f"  Años excluidos por N<{N_MIN}: {sorted(set(sector['Año']) - set(sector_filt['Año']))}")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 5. SERIES POR ENTIDAD (para gráfico comparativo)
@@ -463,11 +472,13 @@ print("Construyendo HTML...")
 # ══════════════════════════════════════════════════════════════════════════════
 # 7. SERIALIZACIÓN SECTOR PARA JS
 # ══════════════════════════════════════════════════════════════════════════════
-def jl(col, d=2):
-    return json.dumps([round(float(v), d) if pd.notna(v) else None for v in sector[col]])
+def jl(col, d=2, src=None):
+    df = src if src is not None else sector_filt
+    return json.dumps([round(float(v), d) if pd.notna(v) else None for v in df[col]])
 
-def ji(col):
-    return json.dumps([int(v) for v in sector[col]])
+def ji(col, src=None):
+    df = src if src is not None else sector_filt
+    return json.dumps([int(v) for v in df[col]])
 
 HTML = f"""<!DOCTYPE html>
 <html lang="es">
@@ -608,9 +619,14 @@ footer{{text-align:center;font-size:10px;color:{C['texto_sub']};
     <b>SCN 2025 §7.82 · §4.3.3 memoria:</b>
     P1 (Producción) = Total Ingresos de Operación.
     P2 (Consumo Intermedio) = α×P1, α={ALPHA_CI} (MIP Chile 2018, sector 94).
-    B1g (VAB Bruto) = P1−P2 = {1-ALPHA_CI:.4f}×P1.
-    B1n (VAB Neto) = B1g−P51d. &nbsp;·&nbsp;
+    B1g (VAB Bruto) = P1−P2 = {1-ALPHA_CI:.4f}×P1. B1n (VAB Neto) = B1g−P51d. &nbsp;·&nbsp;
     <span class="cmf-dot"></span><b>Puntos naranjos</b> = datos CMF Feb-2026 (método directo).
+  </div>
+  <div class="warn-box">
+    <b>⚠ Nota metodológica (cobertura variable):</b>
+    Los gráficos muestran <b>promedios por entidad</b> para hacer comparables los años.
+    El número de entidades con datos varía por año (N se indica en cada barra).
+    Solo se muestran años con N ≥ {N_MIN} entidades. El gráfico de cobertura muestra la evolución de N.
   </div>
   <div class="g2">
     <div id="g-b1g-año"  style="min-height:310px"></div>
@@ -634,6 +650,7 @@ footer{{text-align:center;font-size:10px;color:{C['texto_sub']};
     D11/D12 (sueldos/cotizaciones) sin desagregación en fuentes admin.
     PEP (empleo equiv. tiempo completo, ONU TSE) disponible solo en CMF.
     VOV (trabajo voluntario) sin fuente en Chile.
+    Los valores de D1 y B2g se expresan como <b>promedio por entidad</b> para hacer comparables los años con distinta cobertura.
   </div>
   <div class="g2">
     <div id="g-d1-b2g"   style="min-height:310px"></div>
@@ -784,8 +801,10 @@ const CMF_NAMES = new Set({json.dumps(list(cmf_names), ensure_ascii=False)});
 const PANEL_ROWS = {json.dumps(panel_rows, ensure_ascii=False)};
 const SEQ   = {json.dumps(SEQ)};
 
+const N_MIN  = {N_MIN};   // umbral mínimo de entidades por año
 const SECTOR = {{
-  años:    {json.dumps(sector["Año"].astype(str).tolist())},
+  años:    {json.dumps(sector_filt["Año"].astype(str).tolist())},
+  // Totales (referencia — sensibles a cobertura)
   P1:      {jl("P1_MM")},
   P2:      {jl("P2_MM")},
   B1g:     {jl("B1g_MM")},
@@ -794,6 +813,15 @@ const SECTOR = {{
   B2g:     {jl("B2g_MM")},
   B1n:     {jl("B1n_MM")},
   Rem:     {jl("Rem_MM")},
+  // Promedios por entidad (comparables entre años)
+  P1_avg:   {jl("P1_avg")},
+  P2_avg:   {jl("P2_avg")},
+  B1g_avg:  {jl("B1g_avg")},
+  D1_avg:   {jl("D1_avg")},
+  P51d_avg: {jl("P51d_avg")},
+  B2g_avg:  {jl("B2g_avg")},
+  B1n_avg:  {jl("B1n_avg")},
+  Rem_avg:  {jl("Rem_avg")},
   N:       {ji("N")},
   N_cmf:   {ji("N_cmf")},
   N_def:   {ji("N_def")},
@@ -868,38 +896,62 @@ const RENDER={{
 
 // ══ PRODUCCIÓN Y VAB ════════════════════════════════════════════════════════
 function renderProduccion(){{
-  // B1g por año — barras con N entidades en hover
+  // Helper: anotaciones de N encima de cada barra
+  function nAnnot(años, N, vals){{
+    return años.map((a,i)=>{{
+      const v = vals[i];
+      return {{
+        x:a, y:v!=null?v:0,
+        xref:"x", yref:"y",
+        text:"n="+N[i],
+        showarrow:false,
+        font:{{size:9,color:"#6B7280"}},
+        yanchor:"bottom",
+        yshift:3,
+      }};
+    }});
+  }}
+
+  // B1g promedio por entidad
   Plotly.newPlot("g-b1g-año",[
-    bar(SECTOR.años, SECTOR.B1g, "VAB Bruto [B1g]", AZ, {{
+    bar(SECTOR.años, SECTOR.B1g_avg, "VAB Bruto [B1g] prom./entidad", AZ, {{
       customdata: SECTOR.N,
-      hovertemplate:"<b>%{{x}}</b><br>B1g: MM$%{{y:.1f}}<br>N entidades: %{{customdata}}<extra></extra>",
-      text: SECTOR.B1g.map(v=>v!=null?v.toFixed(1):""), textposition:"outside",
+      hovertemplate:"<b>%{{x}}</b><br>B1g prom: MM$%{{y:.2f}}<br>N entidades: %{{customdata}}<extra></extra>",
+      text: SECTOR.N.map(n=>"n="+n), textposition:"outside",
     }}),
-  ],{{...LAY, title:tit("VAB Bruto del Sector [B1g] — Sector CAC Completo (MM$ CLP)"),
-     yaxis:{{...LAY.yaxis,title:"MM$"}}}}, CFG);
+  ],{{...LAY,
+    title:tit("VAB Bruto Promedio por Entidad [B1g/N] — CAC (MM$ CLP)"),
+    yaxis:{{...LAY.yaxis,title:"MM$ / entidad"}},
+    annotations:[{{
+      x:1,y:1,xref:"paper",yref:"paper",xanchor:"right",yanchor:"top",
+      text:"Promedio por entidad · años N≥{N_MIN} incluidos",
+      showarrow:false,font:{{size:9.5,color:"#374151"}},
+      bgcolor:"rgba(255,255,255,0.85)",borderpad:4
+    }}]
+  }}, CFG);
 
-  // Descomposición apilada del VAB
+  // Descomposición apilada del VAB — promedios
   Plotly.newPlot("g-vab-comp",[
-    bar(SECTOR.años,SECTOR.D1,  "Remuneraciones [D1]", AZ,  {{stackgroup:"s"}}),
-    bar(SECTOR.años,SECTOR.P51d,"Depreciación [P51d]",  AM,  {{stackgroup:"s"}}),
-    bar(SECTOR.años,SECTOR.B2g, "Excedente [B2g]",      GN,  {{stackgroup:"s"}}),
+    bar(SECTOR.años,SECTOR.D1_avg,  "Remuneraciones [D1]", AZ,  {{stackgroup:"s"}}),
+    bar(SECTOR.años,SECTOR.P51d_avg,"Depreciación [P51d]",  AM,  {{stackgroup:"s"}}),
+    bar(SECTOR.años,SECTOR.B2g_avg, "Excedente [B2g]",      GN,  {{stackgroup:"s"}}),
   ],{{...LAY, barmode:"relative",
-     title:tit("Descomposición B1g = D1 + P51d + B2g (MM$)"),
-     yaxis:{{...LAY.yaxis,title:"MM$"}}}}, CFG);
+     title:tit("Descomposición B1g = D1+P51d+B2g — Prom. por Entidad (MM$)"),
+     yaxis:{{...LAY.yaxis,title:"MM$ / entidad"}}}}, CFG);
 
-  // P1 vs P2
-  const p2neg = SECTOR.P2.map(v=>v!=null?-v:null);
+  // P1 vs P2 promedios
+  const p2neg = SECTOR.P2_avg.map(v=>v!=null?-v:null);
   Plotly.newPlot("g-p1-p2",[
-    bar(SECTOR.años,SECTOR.P1, "Producción [P1]",        AZ, {{opacity:0.9}}),
-    bar(SECTOR.años,p2neg,     "Cons. Intermedio −[P2]",  RJ, {{opacity:0.9}}),
+    bar(SECTOR.años,SECTOR.P1_avg, "Producción [P1]",        AZ, {{opacity:0.9}}),
+    bar(SECTOR.años,p2neg,          "Cons. Intermedio −[P2]",  RJ, {{opacity:0.9}}),
   ],{{...LAY, barmode:"overlay",
-     title:tit("Producción [P1] y Consumo Intermedio [P2] (MM$)"),
-     yaxis:{{...LAY.yaxis,title:"MM$"}},
+     title:tit("Producción [P1] y Consumo Intermedio [P2] — Prom./Entidad (MM$)"),
+     yaxis:{{...LAY.yaxis,title:"MM$ / entidad"}},
      annotations:[{{x:1,y:1,xref:"paper",yref:"paper",xanchor:"right",yanchor:"top",
        text:"α={ALPHA_CI} — MIP Chile 2018",showarrow:false,
        font:{{size:10,color:"#374151"}},bgcolor:"rgba(255,255,255,0.85)",borderpad:4}}]}}, CFG);
 
-  // Cobertura: superavit + deficit
+  // Cobertura: superavit + deficit (aquí sí tiene sentido mostrar totales de N)
   const sin = SECTOR.N.map((n,i)=>n - SECTOR.N_def[i]);
   Plotly.newPlot("g-cobertura",[
     bar(SECTOR.años, sin,           "Con superávit",          GN, {{stackgroup:"s"}}),
@@ -909,7 +961,7 @@ function renderProduccion(){{
       line:{{color:NA,width:2,dash:"dot"}},marker:{{size:6}},
       hovertemplate:"<b>%{{x}}</b><br>CMF: %{{y}}<extra></extra>"}},
   ],{{...LAY, barmode:"stack",
-     title:tit("Cobertura del Consolidado (N° entidades)"),
+     title:tit("Cobertura del Consolidado (N° entidades — solo años N≥{N_MIN})"),
      yaxis:{{...LAY.yaxis,title:"N° entidades"}},
      yaxis2:{{title:"N° CMF",overlaying:"y",side:"right",showgrid:false}}}}, CFG);
 }}
@@ -917,54 +969,63 @@ function renderProduccion(){{
 // ══ GENERACIÓN DEL INGRESO ═══════════════════════════════════════════════════
 function renderIngreso(){{
   Plotly.newPlot("g-d1-b2g",[
-    bar(SECTOR.años, SECTOR.D1,  "Remun. [D1]",         AZ),
-    bar(SECTOR.años, SECTOR.B2g, "Excedente bruto [B2g]",GN),
+    bar(SECTOR.años, SECTOR.D1_avg,  "Remun. [D1] prom./entidad",         AZ),
+    bar(SECTOR.años, SECTOR.B2g_avg, "Excedente bruto [B2g] prom./entidad",GN),
   ],{{...LAY, barmode:"group",
-     title:tit("Remuneraciones [D1] y Excedente Bruto [B2g] (MM$)"),
-     yaxis:{{...LAY.yaxis,title:"MM$"}}}}, CFG);
+     title:tit("Remuneraciones [D1] y Excedente [B2g] — Prom. por Entidad (MM$)"),
+     yaxis:{{...LAY.yaxis,title:"MM$ / entidad"}}}}, CFG);
 
+  // D1_pct y B2g_pct ya son cocientes internos (D1/B1g), no dependen de N
   Plotly.newPlot("g-d1-pct",[
     ln(SECTOR.años, SECTOR.D1_pct,  "% D1 / B1g", AZ),
     ln(SECTOR.años, SECTOR.B2g_pct, "% B2g / B1g",GN),
   ],{{...LAY,
-     title:tit("Participación D1 y B2g en el VAB (%)"),
+     title:tit("Participación D1 y B2g en el VAB (%) — invariante a N"),
      yaxis:{{...LAY.yaxis,title:"%",range:[0,100]}},
      shapes:[{{type:"line",x0:0,x1:1,xref:"paper",y0:100,y1:100,
        line:{{color:"#9CA3AF",width:1,dash:"dot"}}}}]}}, CFG);
 
-  const colors_rem = SECTOR.Rem.map(v=>v!=null&&v>=0?GN:RJ);
+  // Remanente promedio por entidad
+  const colors_rem = SECTOR.Rem_avg.map(v=>v!=null&&v>=0?GN:RJ);
   Plotly.newPlot("g-remanente",[
-    {{type:"bar",x:SECTOR.años,y:SECTOR.Rem,
+    {{type:"bar",x:SECTOR.años,y:SECTOR.Rem_avg,
       marker:{{color:colors_rem}},
-      name:"Remanente del Período",
-      hovertemplate:"<b>%{{x}}</b><br>Remanente: MM$%{{y:.2f}}<extra></extra>"}},
+      name:"Remanente prom./entidad",
+      customdata:SECTOR.N,
+      hovertemplate:"<b>%{{x}}</b><br>Rem prom: MM$%{{y:.2f}}<br>N: %{{customdata}}<extra></extra>"}},
   ],{{...LAY,
-     title:tit("Remanente Agregado del Sector (MM$)"),
-     yaxis:{{...LAY.yaxis,title:"MM$"}}}}, CFG);
+     title:tit("Remanente Promedio por Entidad (MM$)"),
+     yaxis:{{...LAY.yaxis,title:"MM$ / entidad"}}}}, CFG);
 
+  // % con déficit — ya es ratio, no depende de N
   Plotly.newPlot("g-deficit",[
     bar(SECTOR.años, SECTOR.pct_def, "% entidades con déficit", AM, {{
       text:SECTOR.pct_def.map(v=>v!=null?v.toFixed(1)+"%":""),textposition:"outside"}}),
   ],{{...LAY,
-     title:tit("% Entidades con Remanente Negativo"),
+     title:tit("% Entidades con Remanente Negativo — invariante a N"),
      yaxis:{{...LAY.yaxis,title:"%",range:[0,80]}}}}, CFG);
 }}
 
 // ══ CUENTA FINANCIERA ════════════════════════════════════════════════════════
 function renderFinanciera(){{
-  Plotly.newPlot("g-f2f4",[
-    bar(SECTOR.años, SECTOR.F2, "Depósitos captados [F2]",  AZ),
-    bar(SECTOR.años, SECTOR.F4, "Colocaciones netas [F4]",  GN),
-  ],{{...LAY, barmode:"group",
-     title:tit("Cuenta Financiera: F2 Depósitos y F4 Colocaciones (MM$)"),
-     yaxis:{{...LAY.yaxis,title:"MM$"}}}}, CFG);
+  // F2 y F4 son totales sensibles a N → normalizar por entidad
+  const F2_avg = SECTOR.F2.map((v,i)=>v!=null&&SECTOR.N[i]>0?+(v/SECTOR.N[i]).toFixed(2):null);
+  const F4_avg = SECTOR.F4.map((v,i)=>v!=null&&SECTOR.N[i]>0?+(v/SECTOR.N[i]).toFixed(2):null);
 
+  Plotly.newPlot("g-f2f4",[
+    bar(SECTOR.años, F2_avg, "Depósitos captados [F2] prom./entidad",  AZ),
+    bar(SECTOR.años, F4_avg, "Colocaciones netas [F4] prom./entidad",  GN),
+  ],{{...LAY, barmode:"group",
+     title:tit("Cuenta Financiera: F2 y F4 — Prom. por Entidad (MM$)"),
+     yaxis:{{...LAY.yaxis,title:"MM$ / entidad"}}}}, CFG);
+
+  // mora y solv ya son promedios → no requieren ajuste
   Plotly.newPlot("g-mora-solv",[
     ln(SECTOR.años, SECTOR.mora, "Mora promedio [CIRIEC]",    RJ),
     ln(SECTOR.años, SECTOR.solv, "Solvencia promedio [CIRIEC]",GN,
        {{yaxis:"y2",line:{{color:GN,width:2.5,dash:"dash"}},marker:{{size:7}}}}),
   ],{{...LAY,
-     title:tit("Mora y Solvencia Promedio del Sector (%)"),
+     title:tit("Mora y Solvencia Promedio del Sector (%) — invariante a N"),
      yaxis:{{...LAY.yaxis,title:"Mora (%)"}},
      yaxis2:{{title:"Solvencia (%)",overlaying:"y",side:"right",showgrid:false}}}}, CFG);
 }}
