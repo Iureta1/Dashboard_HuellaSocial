@@ -23,7 +23,7 @@ import webbrowser
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 EXCEL_HS   = os.path.join(BASE_DIR, "HuellaSocial_Consolidado.xlsx")
 EXCEL_COOP = os.path.join(BASE_DIR, "Consolidado_cooperativas.xlsx")
-OUTPUT     = os.path.join(BASE_DIR, "dashboard_huellasocial_v3.html")
+OUTPUT     = os.path.join(BASE_DIR, "dashboard_huellasocial.html")
 
 # ─── LEER DATOS ───────────────────────────────────────────────────────────────
 xls_hs = pd.read_excel(EXCEL_HS, sheet_name=None, header=None)
