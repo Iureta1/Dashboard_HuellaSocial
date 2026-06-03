@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Huella Social — CAC Chile</title>
+<script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+<style>
+  :root {
+    --bg:#0f1117; --surface:#1a1d27; --surface2:#232736;
+    --accent:#3b82f6; --accent2:#10b981; --accent3:#f59e0b;
+    --text:#e2e8f0; --muted:#94a3b8; --border:#2d3347;
+    --danger:#ef4444; --r:12px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;}
+
+  .header{background:linear-gradient(135deg,#1e2d5a 0%,#0f1117 60%);padding:28px 40px 20px;border-bottom:1px solid var(--border);}
+  .header h1{font-size:24px;font-weight:700;color:#fff;letter-spacing:-.5px;}
+  .header-sub{color:var(--muted);font-size:12px;margin-top:4px;}
+  .authors{margin-top:10px;font-size:12px;color:var(--muted);}
+  .authors span{color:#a5b4fc;font-weight:600;}
+  .badges{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
+  .badge{background:var(--surface2);border:1px solid var(--border);padding:3px 10px;border-radius:20px;font-size:11px;color:var(--muted);}
+  .badge b{color:var(--accent);}
+
+  nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 40px;display:flex;gap:4px;overflow-x:auto;}
+  .nb{background:none;border:none;color:var(--muted);cursor:pointer;padding:13px 16px;font-size:13px;font-weight:500;
+       border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s;}
+  .nb:hover{color:var(--text);}
+  .nb.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+  main{padding:24px 40px 60px;max-width:1400px;margin:0 auto;}
+  .section{display:none;}
+  .section.active{display:block;}
+  .stitle{font-size:17px;font-weight:700;margin-bottom:4px;}
+  .ssub{font-size:12px;color:var(--muted);margin-bottom:20px;}
+
+  .kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:24px;}
+  .kcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;position:relative;overflow:hidden;}
+  .kcard::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+  .kcard.blue::before{background:var(--accent);}
+  .kcard.green::before{background:var(--accent2);}
+  .kcard.amber::before{background:var(--accent3);}
+  .kcard.red::before{background:var(--danger);}
+  .klabel{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;}
+  .kvalue{font-size:26px;font-weight:700;line-height:1;}
+  .ksub{font-size:11px;color:var(--muted);margin-top:5px;}
+
+  .cgrid{display:grid;gap:16px;margin-bottom:16px;}
+  .cgrid.c2{grid-template-columns:1fr 1fr;}
+  .cgrid.c3{grid-template-columns:1fr 1fr 1fr;}
+  .ccard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;}
+  .ctitle{font-size:13px;font-weight:600;margin-bottom:3px;}
+  .csub{font-size:11px;color:var(--muted);margin-bottom:12px;}
+
+  .yr-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
+  .yr-lbl{font-size:11px;color:var(--muted);margin-right:2px;}
+  .ybtn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);
+         padding:4px 11px;border-radius:16px;cursor:pointer;font-size:12px;font-weight:500;transition:all .2s;}
+  .ybtn:hover{border-color:var(--accent);color:var(--accent);}
+  .ybtn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+  .sbtn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);
+         padding:5px 12px;border-radius:16px;cursor:pointer;font-size:12px;font-weight:500;transition:all .2s;}
+  .sbtn:hover{border-color:var(--accent);color:var(--accent);}
+  .sbtn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+  .tw{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead tr{border-bottom:2px solid var(--border);}
+  th{color:var(--muted);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.6px;padding:9px 10px;text-align:left;white-space:nowrap;}
+  td{padding:10px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:var(--surface2);}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:7px;flex-shrink:0;}
+  .pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;}
+
+  .sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px;margin-bottom:24px;}
+  .scard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;}
+  .scard h4{font-size:12px;font-weight:700;color:var(--accent);margin-bottom:7px;}
+  .scard p{font-size:12px;color:var(--muted);line-height:1.6;}
+  .scard code{background:var(--surface2);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:11px;color:var(--accent3);}
+  .fbox{background:var(--surface2);border-left:3px solid var(--accent3);padding:10px 14px;border-radius:0 6px 6px 0;margin-top:9px;font-family:monospace;font-size:12px;color:var(--accent3);}
+  .wbox{background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#fca5a5;}
+  .ibox{background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.2);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#93c5fd;}
+
+  .pb{background:var(--surface2);border-radius:3px;height:5px;overflow:hidden;margin-top:3px;}
+  .pf{height:100%;border-radius:3px;}
+
+  input[type=text]{background:var(--surface2);border:1px solid var(--border);border-radius:6px;
+    color:var(--text);padding:6px 12px;font-size:12px;outline:none;width:220px;}
+  input[type=text]::placeholder{color:var(--muted);}
+  input[type=text]:focus{border-color:var(--accent);}
+
+  @media(max-width:768px){
+    main{padding:14px;}
+    .cgrid.c2,.cgrid.c3{grid-template-columns:1fr;}
+    nav{padding:0 14px;}
+    .header{padding:18px 14px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🌱 Huella Social — Cooperativas de Ahorro y Crédito</h1>
+  <div class="header-sub">Cuenta satélite del sector CAC chileno · Manual ONU-TSE 2018 · SCN 2025 · CIRIEC 2006</div>
+  <div class="authors">Autores: <span>Ignacio Ureta</span> &amp; <span>Antonio Ruiz Tagle</span> · Supervisor: <span>Sebastián Cea</span> · Universidad de los Andes, 2026</div>
+  <div class="badges">
+    <div class="badge">CMF <b>7 CAC supervisadas</b></div>
+    <div class="badge">DAES <b>≤37 CAC</b></div>
+    <div class="badge">Período <b>2013–2025</b></div>
+    <div class="badge">Ref. PIB <b>BCCh 2018</b></div>
+    <div class="badge">α = <b>0,3776</b> (MIP Chile 2018 · Sector 94)</div>
+  </div>
+</div>
+
+<nav>
+  <button class="nb active" onclick="show('overview',this)">📊 Resumen CMF</button>
+  <button class="nb" onclick="show('entidades',this)">🏦 Entidades CMF</button>
+  <button class="nb" onclick="show('daes',this)">📁 Segmento DAES</button>
+  <button class="nb" onclick="show('daes_panel',this)">📋 Panel DAES</button>
+  <button class="nb" onclick="show('region',this)">🗺️ Distribución Regional</button>
+  <button class="nb" onclick="show('historico',this)">📈 Serie Histórica CMF</button>
+  <button class="nb" onclick="show('supuestos',this)">📌 Supuestos</button>
+</nav>
+
+<main>
+
+<!-- OVERVIEW CMF -->
+<div class="section active" id="overview">
+  <div class="stitle">Segmento CMF — Cuenta de Producción Agregada</div>
+  <div class="ssub">7 cooperativas supervisadas · 2013–2025 · Cifras en MM$ corrientes · PIB ref. 2018 (BCCh)</div>
+  <div class="yr-row"><span class="yr-lbl">Año para KPIs:</span><span id="ov-yr-btns"></span></div>
+  <div class="kgrid" id="kpi-cmf"></div>
+  <div class="cgrid c2">
+    <div class="ccard"><div class="ctitle">B1g (VAB bruto) y Aporte al PIB — CMF</div>
+      <div class="csub">N encima de cada barra = cooperativas con dato ese año</div>
+      <div id="ch-cmf-b1g" style="height:270px"></div></div>
+    <div class="ccard"><div class="ctitle">Descomposición P1 → P2 → B1g</div>
+      <div class="csub">Consumo intermedio (α×P1) y valor agregado bruto</div>
+      <div id="ch-cmf-pila" style="height:270px"></div></div>
+  </div>
+  <div class="cgrid c2" style="margin-top:16px">
+    <div class="ccard"><div class="ctitle">D1 vs B2g — Generación del ingreso</div>
+      <div class="csub">Remuneraciones vs excedente de explotación bruto</div>
+      <div id="ch-cmf-d1" style="height:250px"></div></div>
+    <div class="ccard"><div class="ctitle">Composición B1g por entidad (año seleccionado)</div>
+      <div class="csub">Participación de cada cooperativa en el VAB sectorial CMF</div>
+      <div id="ch-cmf-pie" style="height:250px"></div></div>
+  </div>
+</div>
+
+<!-- ENTIDADES CMF -->
+<div class="section" id="entidades">
+  <div class="stitle">Entidades CMF — Detalle por Cooperativa</div>
+  <div class="ssub">Serie histórica individual · selecciona cooperativas para comparar</div>
+  <div class="yr-row" id="ent-selector"></div>
+  <div class="cgrid c2">
+    <div class="ccard"><div class="ctitle">B1g por entidad</div><div class="csub">MM$ corrientes</div>
+      <div id="ch-ent-b1g" style="height:290px"></div></div>
+    <div class="ccard"><div class="ctitle">Aporte al PIB por entidad</div><div class="csub">%</div>
+      <div id="ch-ent-aporte" style="height:290px"></div></div>
+  </div>
+  <div class="cgrid c2" style="margin-top:16px">
+    <div class="ccard"><div class="ctitle">Activos totales</div><div class="csub">MM$</div>
+      <div id="ch-ent-activos" style="height:270px"></div></div>
+    <div class="ccard"><div class="ctitle">Ingresos operacionales (P1)</div><div class="csub">MM$</div>
+      <div id="ch-ent-p1" style="height:270px"></div></div>
+  </div>
+  <div class="ccard" style="margin-top:16px">
+    <div class="ctitle">Tabla comparativa CMF</div>
+    <div class="yr-row" style="margin-top:8px"><span class="yr-lbl">Año:</span><span id="cmf-tbl-yrs"></span></div>
+    <div class="tw" id="cmf-table-wrap"></div>
+  </div>
+</div>
+
+<!-- DAES AGRUPADO -->
+<div class="section" id="daes">
+  <div class="stitle">Segmento DAES — Agregados sectoriales</div>
+  <div class="ssub">CAC no supervisadas por CMF · N varía por año según EEFF disponibles</div>
+  <div class="wbox">⚠️ <b>Panel no balanceado:</b> el conjunto de entidades varía por año. Las comparaciones interanuales deben interpretarse controlando por N. No se agregan segmentos DAES y CMF.</div>
+  <div class="yr-row"><span class="yr-lbl">Año para KPIs:</span><span id="daes-yr-btns"></span></div>
+  <div class="kgrid" id="kpi-daes"></div>
+  <div class="cgrid c2">
+    <div class="ccard"><div class="ctitle">B1g sectorial y N de cooperativas</div>
+      <div class="csub">Etiquetas "N=X" sobre cada barra</div>
+      <div id="ch-daes-b1g" style="height:270px"></div></div>
+    <div class="ccard"><div class="ctitle">Top 10 entidades DAES — B1g acumulado</div>
+      <div class="csub">Suma del período</div>
+      <div id="ch-daes-top" style="height:270px"></div></div>
+  </div>
+  <div class="cgrid c2" style="margin-top:16px">
+    <div class="ccard"><div class="ctitle">Aporte al PIB — DAES</div><div class="csub">%</div>
+      <div id="ch-daes-aporte" style="height:250px"></div></div>
+    <div class="ccard"><div class="ctitle">Ratio D1/B1g — Intensidad laboral</div>
+      <div class="csub">Proporción del VAB destinada a remuneraciones · fuente: Excel</div>
+      <div id="ch-daes-d1b1g" style="height:250px"></div></div>
+  </div>
+</div>
+
+<!-- PANEL DAES COMPLETO -->
+<div class="section" id="daes_panel">
+  <div class="stitle">Panel DAES — Cooperativas individuales por año</div>
+  <div class="ssub">Una fila por cooperativa × año · todos los valores en MM$</div>
+  <div class="yr-row">
+    <span class="yr-lbl">Año:</span><span id="panel-yr-btns"></span>
+    <input type="text" id="panel-search" placeholder="Buscar cooperativa…" oninput="filterPanel()" style="margin-left:12px">
+  </div>
+  <div class="tw" id="panel-daes-wrap"></div>
+</div>
+
+<!-- REGIÓN -->
+<div class="section" id="region">
+  <div class="stitle">Distribución Geográfica del Sector CAC</div>
+  <div class="ssub">39 cooperativas vigentes · DAES + CMF · cruzado con cuenta satélite</div>
+  <div class="cgrid c2">
+    <div class="ccard"><div class="ctitle">CAC vigentes por región</div>
+      <div id="ch-reg-n" style="height:330px"></div></div>
+    <div class="ccard"><div class="ctitle">Socios totales por región</div>
+      <div id="ch-reg-socios" style="height:330px"></div></div>
+  </div>
+  <div class="ccard" style="margin-top:16px">
+    <div class="ctitle">Grandes CAC supervisadas CMF — Presencia geográfica y cuenta satélite</div>
+    <div class="yr-row" style="margin-top:8px"><span class="yr-lbl">Año:</span><span id="reg-tbl-yrs"></span></div>
+    <div class="tw" id="region-table-wrap"></div>
+  </div>
+  <div class="ibox" style="margin-top:14px">💡 La R. Metropolitana concentra la mayor parte de las CAC y del VAB sectorial. Oriencoop (Maule) y Coonfía (Valparaíso) son las únicas grandes CAC con sede fuera de la RM.</div>
+</div>
+
+<!-- SERIE HISTÓRICA CMF -->
+<div class="section" id="historico">
+  <div class="stitle">Serie Histórica CMF — Evolución del VAB por Cooperativa</div>
+  <div class="ssub">7 CAC supervisadas · B1g en MM$ corrientes · Panel 2013–2025</div>
+  <div class="cgrid c2" style="margin-bottom:16px">
+    <div class="ccard" style="grid-column:1/-1">
+      <div class="ctitle">B1g (VAB bruto) histórico — Todas las entidades CMF</div>
+      <div class="csub">Líneas por cooperativa · evolución completa del período</div>
+      <div id="ch-hist-b1g" style="height:340px"></div>
+    </div>
+  </div>
+  <div class="cgrid c2">
+    <div class="ccard">
+      <div class="ctitle">Participación en el VAB sectorial CMF</div>
+      <div class="csub">Share de cada cooperativa sobre el total del segmento CMF ese año</div>
+      <div class="yr-row" style="margin-top:8px"><span class="yr-lbl">Año:</span><span id="hist-share-yrs"></span></div>
+      <div id="ch-hist-share" style="height:310px"></div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">Aporte al PIB — Serie histórica por entidad</div>
+      <div class="csub">% sobre PIB Chile ref. 2018 · cada cooperativa</div>
+      <div id="ch-hist-pib" style="height:310px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SUPUESTOS -->
+<div class="section" id="supuestos">
+  <div class="stitle">Supuestos Metodológicos</div>
+  <div class="ssub">Criterios adoptados para la estimación · Proyecto Huella Social 2026</div>
+  <div class="sgrid">
+    <div class="scard"><h4>P1 — Producción (Output)</h4>
+      <p>Se usa <code>Total_Ingresos_Operación</code> como proxy del output bruto (P1), siguiendo el Manual ONU-TSE 2018 para entidades financieras cooperativas.</p>
+      <div class="fbox">P1 = Total_Ingresos_Operación</div></div>
+    <div class="scard"><h4>P2 — Consumo Intermedio (α = 0,3776)</h4>
+      <p>El consumo intermedio <b>no se extrae directamente de los EEFF</b> sino que se estima como <code>α × P1</code>, donde α = 0,3776 es el coeficiente técnico del sector 94 de la MIP Chile 2018. Garantiza <b>comparabilidad entre segmentos</b>.</p>
+      <div class="fbox">P2 = α × P1  |  α = 0,3776 (MIP Chile 2018, Sector 94)</div></div>
+    <div class="scard"><h4>B1g — VAB bruto (variable principal)</h4>
+      <p>Se reporta B1g (VAB <i>bruto</i>) como variable central, siguiendo a Polonia (Statistics Poland 2021) y Portugal (Pedroso et al. 2023). La depreciación (P51d) no se incluye por falta de desglose consistente.</p>
+      <div class="fbox">B1g = P1 − P2</div></div>
+    <div class="scard"><h4>D1 — Remuneraciones</h4>
+      <p>Se usa el valor absoluto de <code>Remuneraciones_y_Gastos_del_Personal</code>. En algunos EEFF aparece como negativo (convención de gasto), por eso se aplica |D1|.</p>
+      <div class="fbox">D1 = |Remuneraciones_y_Gastos_del_Personal|</div></div>
+    <div class="scard"><h4>No-agregación DAES / CMF</h4>
+      <p>Los segmentos <b>no se suman</b>. Las CAC CMF tienen EEFF IFRS con fiscalización intensa y universo estable (7). Las DAES tienen universo variable. Agregar introduciría problemas de comparabilidad y posible doble cobertura en años de transición (2019).</p></div>
+    <div class="scard"><h4>Panel no balanceado (DAES)</h4>
+      <p>La cobertura varía por año (N=2 en 2014; N=23 en 2023). Las comparaciones interanuales requieren controlar por N. Consistente con Portugal y Polonia, que presentaron paneles no balanceados en sus primeras iteraciones.</p></div>
+    <div class="scard"><h4>D2 y D3 = 0</h4>
+      <p>Las cooperativas están exentas de impuestos sobre la renta (DFL N°5/2003, art. 78), por lo que D2 (impuestos sobre producción) y D3 (subsidios) se asumen iguales a cero.</p></div>
+    <div class="scard"><h4>PIB de referencia</h4>
+      <p>Precios corrientes en MM$ con año base 2018, según Cuentas Nacionales del Banco Central (si3.bcentral.cl). El dato 2025 es provisorio. Para el avance 2026 se usa el PIB 2025 como denominador referencial.</p></div>
+  </div>
+  <div class="ccard">
+    <div class="ctitle">Flujo metodológico — De EEFF a Cuenta Satélite</div>
+    <div id="ch-sankey" style="height:290px"></div>
+  </div>
+</div>
+
+</main>
+
+<script>
+const D = JSON.parse(`{"cmf_entities": {"AHORROCOOP": {"años": [2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025], "P1": [6948.1, 5701.9, 5838.4, 7215.0, 5915.0, 7611.0, 8768.0, 8612.0, 9254.0, 11783.0, 11267.0, 13928.0, 16087.0], "P2": [2623.6025600000003, 2153.0374399999996, 2204.57984, 2724.384, 2233.504, 2873.9136, 3310.7968, 3251.8912, 3494.3104, 4449.2608, 4254.4192, 5259.2128, 6074.4511999999995], "B1g": [4324.49744, 3548.86256, 3633.8201599999998, 4490.616, 3681.496, 4737.0864, 5457.2032, 5360.1088, 5759.6896, 7333.7392, 7012.5808, 8668.787199999999, 10012.5488], "D1": [3146.5, 2930.6, 2625.4, 2822.3, 2687.0, 3158.0, 3350.0, 3550.0, 3836.0, 4794.0, 5515.0, 6309.0, 6952.0], "Rem": [-1580.6, -4951.7, -1295.7, 360.1, 488.0, 1661.0, 2112.0, 1538.0, 3542.0, 3552.0, 1623.0, 1702.0, 2100.0], "Activos": [32276.2, 27036.7, 28433.0, 33393.5, 37342.0, 42902.0, 50812.0, 54171.0, 58971.0, 68830.0, 77988.0, 91740.0, 102290.0], "Patrimonio": [11120.3, 5788.6, 4742.8, 5265.1, 4357.0, 6131.0, 8617.0, 10150.0, 12549.0, 15234.0, 17876.0, 19676.0, 21304.0], "Aporte": [0.0031797073888075998, 0.0024524640028747943, 0.0022908532558330126, 0.0026608692560661277, 0.0020530886986587847, 0.0025006394805606146, 0.002790723096119623, 0.002662653956394959, 0.0024043186561806006, 0.0027889817990979413, 0.0024858757094191005, 0.0027902534110550692, 0.002945057856684844], "color": "#27ae60"}, "CAPUAL": {"años": [2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025], "P1": [14358.3, 12524.9, 12057.1, 13028.8, 11260.0, 11482.0, 12485.0, 11712.0, 11712.0, 12492.0, 14238.0, 15425.0, 17134.0], "P2": [5421.694079999999, 4729.402239999999, 4552.76096, 4919.67488, 4251.776, 4335.6032, 4714.336, 4422.4511999999995, 4422.4511999999995, 4716.9792, 5376.2688, 5824.48, 6469.7984], "B1g": [8936.60592, 7795.49776, 7504.339040000001, 8109.12512, 7008.224, 7146.3968, 7770.664, 7289.5488000000005, 7289.5488000000005, 7775.0208, 8861.7312, 9600.52, 10664.2016], "D1": [3441.6, 3429.5, 3699.1, 3869.4, 4484.0, 4318.0, 4730.0, 4386.0, 4386.0, 4485.0, 4961.0, 5027.0, 5299.0], "Rem": [-2080.8, -951.1, 517.8, 2919.8, 3271.0, 2026.0, 2279.0, 1751.0, 1751.0, 3725.0, 4496.0, 4017.0, 4569.0], "Activos": [97883.1, 98515.8, 91545.7, 87901.7, 95536.0, 101306.0, 106697.0, 108301.0, 111602.0, 95214.0, 100368.0, 106851.0, 113551.0], "Patrimonio": [15636.6, 14819.7, 16001.2, 19449.8, 19039.0, 20123.0, 21199.0, 22393.0, 25353.0, 25987.0, 28864.0, 31435.0, 33591.0], "Aporte": [0.006570888818629001, 0.005387128218594945, 0.004730927444317659, 0.004804980369152371, 0.003908331149095168, 0.003772479636814739, 0.003973788532738765, 0.0036211104432533397, 0.0030429414416670844, 0.002956798831734828, 0.0031413773276567987, 0.0030901535658762525, 0.0031367328474195388], "color": "#f39c12"}, "CONFIA Ltda.": {"años": [2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025], "P1": [3166.3, 3119.1, 3273.9, 3715.7, 4089.0, 4045.0, 8347.0, 11592.0, null, 3573.0, 4201.0, 5930.0, 7250.0], "P2": [1195.59488, 1177.77216, 1236.22464, 1403.0483199999999, 1544.0064, 1527.392, 3151.8271999999997, 4377.1392, 0.0, 1349.1648, 1586.2975999999999, 2239.168, 2737.6], "B1g": [1970.70512, 1941.32784, 2037.6753600000002, 2312.65168, 2544.9936, 2517.608, 5195.1728, 7214.8608, 0.0, 2223.8352, 2614.7024, 3690.832, 4512.4], "D1": [685.6, 816.6, 956.6, 1094.7, 1225.0, 1281.0, 1434.0, 4165.0, null, 1423.8, 1710.6, 3030.0, 2848.2], "Rem": [944.3, 511.6, 565.9, 244.3, 1314.0, 1378.0, 1374.0, 1642.0, null, 547.0, 416.0, -828.0, 853.0], "Activos": [19787.8, 22495.3, 27353.4, 30954.9, 34005.0, 39059.0, 40357.0, 42356.0, null, 40571.0, 49796.0, 58304.0, 62695.0], "Patrimonio": [17582.0, 19900.4, 23051.2, 26236.8, 26543.0, 27097.0, 27770.0, 28911.0, null, 32934.0, 31082.0, 31289.0, 31905.0], "Aporte": [0.0014490159187664979, 0.0013415669288073747, 0.0012846027120909328, 0.0013703384469528634, 0.0014192865069849148, 0.001329008894871592, 0.002656725100742529, 0.0035840089018265636, 0.0, 0.0008457126341489386, 0.0009268806119880751, 0.0011879812412088284, 0.0013272623522698527], "color": "#d35400"}, "Coocretal": {"años": [2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025], "P1": [3819.8, 3415.5, 3276.4, 3389.2, 3458.0, 3218.0, 2805.0, 1915.0, 2188.0, 3323.0, 2591.0, 2322.0, 2284.0], "P2": [1442.3564800000001, 1289.6928, 1237.16864, 1279.76192, 1305.7408, 1215.1168, 1059.168, 723.1039999999999, 826.1888, 1254.7648, 978.3616, 876.7872, 862.4384], "B1g": [2377.44352, 2125.8072, 2039.23136, 2109.43808, 2152.2592, 2002.8832, 1745.832, 1191.8960000000002, 1361.8112, 2068.2352, 1612.6384, 1445.2128, 1421.5616], "D1": [1771.9, 1605.6, 1827.3, 1658.0, 1664.0, 1736.0, 1803.0, 1831.0, 1269.0, 1018.0, 1432.0, 1554.0, 1205.0], "Rem": [-446.8, -267.8, -424.1, 123.3, 145.0, -833.0, -628.0, -1361.0, 1.0, -234.0, -762.0, -715.0, -224.0], "Activos": [16980.1, 15653.3, 14763.8, 15715.4, 17021.0, 16872.0, 16086.0, 15029.0, 15707.0, 13697.0, 12177.0, 12762.0, 13254.0], "Patrimonio": [7794.1, 7501.2, 7272.6, 7590.4, 8617.0, 7764.0, 7115.0, 6480.0, 5660.0, 5263.0, 4422.0, 3624.0, 3328.0], "Aporte": [0.001748081674668941, 0.0014690525617458848, 0.001285583654325035, 0.0012499262761828578, 0.001200267239215905, 0.001057293108454087, 0.0008927894941395463, 0.0005920787652689673, 0.0005684730083988712, 0.0007865387862515879, 0.0005716609535018097, 0.00046517579124568287, 0.00041813340863232324], "color": "#8e44ad"}, "Coopeuch Ltda.": {"años": [2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025], "P1": [203410.1, 199513.2, 205966.5, 215779.1, 195996.0, 207410.0, 220878.0, 214852.0, 227719.0, 286085.0, 275445.0, 328952.0, 359492.0], "P2": [76807.65376, 75336.18432, 77772.9504, 81478.18816, 74008.08959999999, 78318.016, 83403.5328, 81128.1152, 85986.6944, 108025.696, 104008.03199999999, 124212.2752, 135744.17919999998], "B1g": [126602.44624, 124177.01568000001, 128193.5496, 134300.91184000002, 121987.91040000001, 129091.984, 137474.4672, 133723.8848, 141732.30560000002, 178059.304, 171436.968, 204739.7248, 223747.82080000002], "D1": [42042.9, 41701.1, 46345.1, 52321.1, 55197.0, 58453.0, 62118.0, 63610.0, 67461.0, 69565.0, 67113.0, 79042.0, 89298.0], "Rem": [32279.2, 31031.0, 35610.2, 42689.5, 60915.0, 70002.0, 71278.0, 62212.0, 90555.0, 119240.0, 84697.0, 92029.0, 94047.0], "Activos": [1137043.2, 1143544.2, 1241436.8, 1371455.7, 1491468.0, 1641723.0, 1834084.0, 2161912.0, 2439508.0, 2746337.0, 3132431.0, 3564043.0, 3939576.0], "Patrimonio": [365114.1, 382225.8, 419116.1, 451853.4, 424947.0, 449473.0, 481822.0, 522707.0, 556837.0, 640530.0, 662688.0, 734697.0, 776916.0], "Aporte": [0.0930879805886635, 0.08581331505258939, 0.08081649546408781, 0.0795786518768702, 0.06802995309929455, 0.06814579354395967, 0.07030215967435106, 0.06642783648854735, 0.05916458180968125, 0.06771500110285449, 0.060772347100465446, 0.06590030442801459, 0.06581244104030261], "color": "#1a56db"}, "Detacoop Ltda.": {"años": [2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025], "P1": [4494.2, 3525.6, 3715.5, 4765.3, 4367.0, 4608.0, 5084.0, 4751.0, 5231.0, 7565.0, 9834.0, 13205.0, 16292.0], "P2": [1697.00992, 1331.26656, 1402.9728, 1799.37728, 1648.9792, 1739.9808, 1919.7184, 1793.9776, 1975.2256, 2856.544, 3713.3184, 4986.208, 6151.8592], "B1g": [2797.19008, 2194.33344, 2312.5272, 2965.9227200000005, 2718.0208000000002, 2868.0191999999997, 3164.2816000000003, 2957.0224, 3255.7744000000002, 4708.456, 6120.6816, 8218.792000000001, 10140.140800000001], "D1": [2529.8, 2505.3, 2076.4, 2234.7, 2259.0, 2329.0, 2682.0, 2856.0, 2951.0, 3594.0, 4565.0, 6044.0, 7705.0], "Rem": [-604.4, -491.0, -705.3, 71.3, -232.0, 83.0, -135.0, -135.0, 505.0, 1255.0, 1858.0, 2007.0, 1806.0], "Activos": [18776.5, 20238.5, 20690.7, 23938.7, 27223.0, 31291.0, 36779.0, 40304.0, 45789.0, 53208.0, 67098.0, 86017.0, 103358.0], "Patrimonio": [5657.7, 5059.0, 4608.7, 4878.0, 5870.0, 5988.0, 5871.0, 5150.0, 5547.0, 6541.0, 7651.0, 9820.0, 11885.0], "Aporte": [0.002056712043116696, 0.001516408054952801, 0.0014578763483227527, 0.0017574276182857822, 0.0015157799403284723, 0.001513985905455697, 0.0016181610653138874, 0.0014689118609884403, 0.0013590869775751808, 0.0017906006373738374, 0.002169708150033499, 0.0026454118533157807, 0.0029825873438869576], "color": "#16a085"}, "Oriencoop Ltda.": {"años": [2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025], "P1": [24278.2, 20604.9, 19694.2, 20337.8, 17694.0, 19304.0, 19351.0, 16452.0, 16441.0, 15127.0, 20038.0, 24976.0, 27346.0], "P2": [9167.44832, 7780.41024, 7436.52992, 7679.553279999999, 6681.2544, 7289.1903999999995, 7306.9376, 6212.2752, 6208.1215999999995, 5711.955199999999, 7566.3488, 9430.9376, 10325.8496], "B1g": [15110.751680000001, 12824.48976, 12257.67008, 12658.24672, 11012.7456, 12014.8096, 12044.062399999999, 10239.7248, 10232.878400000001, 9415.0448, 12471.6512, 15545.0624, 17020.1504], "D1": [8259.0, 5556.1, 5509.2, 6127.5, 6307.0, 6636.0, 7040.0, 6881.0, 7425.0, 6900.0, 7430.0, 8304.0, 9456.0], "Rem": [-5642.5, -1587.6, 1407.9, 1262.0, 2070.0, 1321.0, 2406.0, 1672.0, 3135.0, 37.0, -295.0, 3762.0, 5114.0], "Activos": [111346.5, 104564.2, 105201.1, 103107.8, 108383.0, 108511.0, 111623.0, 117739.0, 125923.0, 131009.0, 131053.0, 137067.0, 147185.0], "Patrimonio": [16605.9, 14428.0, 16614.6, 18499.9, 20640.0, 22181.0, 24681.0, 26411.0, 27980.0, 28386.0, 28155.0, 31991.0, 36311.0], "Aporte": [0.011110601736726396, 0.00886244506793084, 0.007727549018742553, 0.0075005165289011334, 0.006141564063240666, 0.006342444426848259, 0.006159133511976599, 0.0050866213296109925, 0.00427160179665715, 0.0035804911885729063, 0.004421050631520364, 0.0050035446004100675, 0.0050062505220926055], "color": "#e74c3c"}}, "cmf_agg": {"Año": [2013.0, 2014.0, 2015.0, 2016.0, 2017.0, 2018.0, 2019.0, 2020.0, 2021.0, 2022.0, 2023.0, 2024.0, 2025.0], "N": [7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0], "P1 (MM$)": [260475.00000000003, 248405.1, 253822.0, 268230.9, 242779.0, 257678.0, 277718.0, 269886.0, 272545.0, 339948.0, 337614.0, 404738.0, 445885.0], "P2 (MM$)": [98355.36000000002, 93797.76576, 95843.1872, 101283.98784, 91673.3504, 97299.2128, 104866.3168, 101908.9536, 102912.992, 128364.3648, 127483.04639999999, 152829.0688, 168366.176], "B1g (MM$)": [162119.64, 154607.33424, 157978.8128, 166946.91216, 151105.6496, 160378.78720000002, 172851.6832, 167977.0464, 169632.008, 211583.63520000002, 210130.9536, 251908.9312, 277518.824], "D1 (MM$)": [61877.3, 58544.8, 63039.1, 70127.7, 73823.0, 77911.0, 83157.0, 87279.0, 87328.0, 91779.8, 92726.6, 109310.0, 122763.2], "B2g (MM$)": [100242.34000000001, 96062.53424, 94939.71280000001, 96819.21216000001, 77282.6496, 82467.78720000002, 89694.6832, 80698.04639999999, 82304.008, 119803.83520000002, 117404.3536, 142598.9312, 154755.624], "Rem (MM$)": [22868.399999999998, 23293.4, 35676.7, 47670.3, 67971.0, 75638.0, 78686.0, 67319.0, 99489.0, 128122.0, 92033.0, 101974.0, 108265.0], "PIB Chile (MM$)": [136003000.0, 144706000.0, 158623000.0, 168765000.0, 179315000.0, 189435000.0, 195548000.0, 201307000.0, 239556000.0, 262954000.0, 282097000.0, 310681000.0, 339978000.0], "Aporte (%)": [0.11920298816937862, 0.10684237988749604, 0.09959388789771977, 0.09892271037241133, 0.08426827069681844, 0.08466164499696467, 0.08839348047538201, 0.0834432217458906, 0.07081100369016013, 0.08046412498003454, 0.07448890048458509, 0.08108282489112627, 0.08162846537128873]}, "daes_agg": {"Año": [2014.0, 2015.0, 2016.0, 2017.0, 2018.0, 2019.0, 2020.0, 2021.0, 2022.0, 2023.0, 2024.0], "N": [2.0, 8.0, 12.0, 14.0, 16.0, 6.0, 10.0, 11.0, 20.0, 23.0, 12.0], "P1 (MM$)": [null, 217283.567164, 221862.33526, 6224.248082, 8977.260383, 4667.251661, 6164.637105, 6101.214863, 22171.988349, 41965.775684, 18135.860311], "P2 (MM$)": [0.0, 82046.2749611264, 83775.217794176, 2350.2760757632, 3389.8135206208003, 1762.3542271936, 2327.766970848, 2303.8187322688, 8372.1428005824, 15846.2768982784, 6848.1008534336], "B1g (MM$)": [0.0, 135237.29220287362, 138087.117465824, 3873.9720062368, 5587.4468623792, 2904.8974338064, 3836.870134152, 3797.3961307312, 13799.8455484176, 26119.4987857216, 11287.7594575664], "D1 (MM$)": [78.22359700000001, 49389.264671, 54321.375697, 2622.225143, 4385.241649, 1384.323563, 2005.683398, 1779.740196, 6425.796866000001, 10878.783104, 8269.447552], "B2g (MM$)": [-78.22359700000001, 85848.02753187362, 83765.741768824, 1251.7468632368, 1202.2052133792004, 1520.5738708064, 1831.186736152, 2017.6559347312002, 7374.048682417599, 15240.7156817216, 3018.311905566401], "Rem (MM$)": [-6.852924, 42877.427089, 47902.403722, 260.2767889999999, 628.3566019999998, 503.366763, 152.963691, 7.153386000000069, -2572.842743, 1923.448231, 2246.72167], "D1/B1g": [0.51, 0.37, 0.39, 0.68, 0.78, 0.48, 0.52, 0.47, 0.47, 0.42, 0.73], "PIB Chile (MM$)": [144706000.0, 158623000.0, 168765000.0, 179315000.0, 189435000.0, 195548000.0, 201307000.0, 239556000.0, 262954000.0, 282097000.0, 310681000.0], "Aporte (%)": [0.0, 0.08525705112302354, 0.08182212986450034, 0.002160428300051195, 0.002949532484693536, 0.001485516309962976, 0.0019059794911016508, 0.0015851809726039842, 0.005248007464582246, 0.009259048761851987, 0.003633231339401637]}, "daes_entities": {"Cooperativa del Personal de la Universidad de": {"años": [2015, 2016], "B1g": [131911.1448, 134300.91184], "P1": [211939.5, 215779.1], "Aporte": [0.08316, 0.079579], "color": "#1a56db"}, "Cooperativa de Ahorro y Crédito para el Desar": {"años": [2020, 2021, 2022, 2023, 2024], "B1g": [2.963753033600001, 4.3267306112, 4.585644032, 6163.869936, 6705.567062400001], "P1": [4.761814, 6.951688, 7.36768, 9903.39, 10773.726], "Aporte": [1e-06, 2e-06, 2e-06, 0.002185, 0.002158], "color": "#e74c3c"}, "Cooperativa de Ahorro y Crédito Libercoop Lim": {"años": [2015, 2016, 2017, 2018, 2019, 2022, 2023, 2023], "B1g": [344.2110771312001, 348.9738176144, 397.3577029664, 409.0323709664, 471.7266208928, 602.8276946656, 3385.1409140592, 3385.1409140592], "P1": [553.038363, 560.690581, 638.428186, 657.185686, 757.915522, 968.553494, 5438.851083, 5438.851083], "Aporte": [0.000217, 0.000207, 0.000222, 0.000216, 0.000241, 0.000229, 0.0012, 0.0012], "color": "#27ae60"}, "Temucoop": {"años": [2015, 2016, 2017, 2018, 2022, 2023], "B1g": [666.2686571664, 774.5937740928001, 176.4599563296, 182.8755186016, 2428.6387562768, 3420.3187429744], "P1": [1070.483061, 1244.527272, 283.515354, 293.823134, 3902.054557, 5495.370731], "Aporte": [0.00042, 0.000459, 9.8e-05, 9.7e-05, 0.000924, 0.001212], "color": "#f39c12"}, "Sociedad Cooperativa de Ahorro y Crédito Somn": {"años": [2019, 2020, 2021, 2022, 2023], "B1g": [1093.0273685104, 1199.520932152, 1422.8435174464, 1485.6295334064, 1463.0319389728], "P1": [1756.149371, 1927.250855, 2286.059636, 2386.936911, 2350.629722], "Aporte": [0.000559, 0.000596, 0.000594, 0.000565, 0.000519], "color": "#8e44ad"}, "Cooperativa Unión y Patria": {"años": [2018, 2022, 2023, 2024], "B1g": [1629.0835859936, 1637.7633846944, 2521.2551656608, 60.34218787840001], "P1": [2617.422214, 2631.367906, 4050.859842, 96.950816], "Aporte": [0.00086, 0.000623, 0.000894, 1.9e-05], "color": "#16a085"}, "Andescoop Ltda.": {"años": [2020, 2022, 2023, 2024], "B1g": [785.417386648, 1051.0186161936, 1227.4601339232, 1047.0148806848], "P1": [1261.917395, 1688.654589, 1972.140318, 1682.221852], "Aporte": [0.00039, 0.0004, 0.000435, 0.000337], "color": "#d35400"}, "Cooperativa de Ahorro y Crédito Bansur": {"años": [2019, 2020, 2021, 2022, 2023], "B1g": [678.0585712400001, 647.0589863456001, 695.8017886160001, 924.4976060144, 1082.9814403984], "P1": [1089.425725, 1039.619194, 1117.933465, 1485.375331, 1740.008741], "Aporte": [0.000347, 0.000321, 0.00029, 0.000352, 0.000384], "color": "#2980b9"}, "Mantención CAP": {"años": [2020, 2021, 2022, 2023], "B1g": [232.190384272, 277.6389801872, 530.4077563648001, 2555.3770319808], "P1": [373.05653, 446.078053, 852.197552, 4105.682892], "Aporte": [0.000115, 0.000116, 0.000202, 0.000906], "color": "#c0392b"}, "Cooperativa de Ahorro y Crédito Sanfecoop": {"años": [2021, 2022, 2022, 2023], "B1g": [383.7413529808001, 564.794169448, 1788.0566915072, 687.964543376], "P1": [616.551017, 907.445645, 2872.841728, 1105.34149], "Aporte": [0.00016, 0.000215, 0.00068, 0.000244], "color": "#1abc9c"}}, "daes_panel": [{"Entidad": "Andescoop Ltda.", "RUT": "70009770-6", "Año": 2020, "P1": 1261.917395, "P2": 476.500008352, "B1g": 785.417386648, "D1": 644.208842, "B2g": 141.208544648, "Rem": -311.963175, "Activos": 12536.769604, "Patrimonio": 6030.044546, "Aporte": 0.00039}, {"Entidad": "Andescoop Ltda.", "RUT": "70009770-6", "Año": 2022, "P1": 1688.654589, "P2": 637.6359728064, "B1g": 1051.0186161936, "D1": 697.546684, "B2g": 353.4719321936001, "Rem": -637.846203, "Activos": null, "Patrimonio": null, "Aporte": 0.0004}, {"Entidad": "Andescoop Ltda.", "RUT": "70009770-6", "Año": 2023, "P1": 1972.140318, "P2": 744.6801840768, "B1g": 1227.4601339232, "D1": 774.030591, "B2g": 453.4295429232002, "Rem": -144.995424, "Activos": null, "Patrimonio": null, "Aporte": 0.000435}, {"Entidad": "Andescoop Ltda.", "RUT": "70009770-6", "Año": 2024, "P1": 1682.221852, "P2": 635.2069713151999, "B1g": 1047.0148806848, "D1": 788.547112, "B2g": 258.4677686848001, "Rem": 165.010947, "Activos": 10789.78153, "Patrimonio": 6508.766783, "Aporte": 0.000337}, {"Entidad": "Coop. de Ahorro y Crédito Lautaro Rosas (actu", "RUT": "70286300-7", "Año": 2016, "P1": 3715.668447, "P2": 1403.0364055872, "B1g": 2312.6320414128, "D1": 1094.662491, "B2g": 1217.9695504128, "Rem": 244.338934, "Activos": null, "Patrimonio": null, "Aporte": 0.00137}, {"Entidad": "Coop. de Ahorro, Crédito y Servicios Financie", "RUT": "85303300-6", "Año": 2023, "P1": 526.989935, "P2": 198.991399456, "B1g": 327.998535544, "D1": null, "B2g": null, "Rem": 273.258521, "Activos": 3202.339791, "Patrimonio": 3126.230346, "Aporte": 0.000116}, {"Entidad": "Coop. de Ahorro, Crédito y Servicios Financie", "RUT": "85303300-6", "Año": 2024, "P1": 606.990917, "P2": 229.1997702592, "B1g": 377.7911467408, "D1": null, "B2g": null, "Rem": 312.943377, "Activos": 3413.662059, "Patrimonio": 3347.505541, "Aporte": 0.000122}, {"Entidad": "Cooperativa de Ahorro y Crédito Ahorro Maule ", "RUT": "83908800-0", "Año": 2016, "P1": 186.924988, "P2": 70.5828754688, "B1g": 116.3421125312, "D1": 114.675373, "B2g": 1.666739531200022, "Rem": 11.741258, "Activos": 835.298594, "Patrimonio": 637.396269, "Aporte": 6.9e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Ahorro Maule ", "RUT": "83908800-0", "Año": 2017, "P1": 200.528562, "P2": 75.7195850112, "B1g": 124.8089769888, "D1": 125.480398, "B2g": -0.6714210111999819, "Rem": 15.889036, "Activos": 897.254464, "Patrimonio": 671.758588, "Aporte": 7e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Ahorro Maule ", "RUT": "83908800-0", "Año": 2018, "P1": 204.64546, "P2": 77.274125696, "B1g": 127.371334304, "D1": 129.358632, "B2g": -1.987297695999985, "Rem": 8.767605, "Activos": 935.7158, "Patrimonio": 680.789469, "Aporte": 6.7e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Araucaniacoop", "RUT": "76489600-9", "Año": 2020, "P1": 324.929265, "P2": 122.693290464, "B1g": 202.235974536, "D1": 72.29985, "B2g": 129.936124536, "Rem": 116.588192, "Activos": 2690.759581, "Patrimonio": 1607.438681, "Aporte": 0.0001}, {"Entidad": "Cooperativa de Ahorro y Crédito Araucaniacoop", "RUT": "76489600-9", "Año": 2021, "P1": 293.794167, "P2": 110.9366774592, "B1g": 182.8574895408, "D1": 73.823908, "B2g": 109.0335815408, "Rem": 6.158815, "Activos": 3268.747682, "Patrimonio": 1681.152909, "Aporte": 7.6e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Araucaniacoop", "RUT": "76489600-9", "Año": 2022, "P1": 349.906959, "P2": 132.1248677184, "B1g": 217.7820912816, "D1": 103.49862, "B2g": 114.2834712816, "Rem": -28.267172, "Activos": 2819.428846, "Patrimonio": 1879.543679, "Aporte": 8.3e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Araucaniacoop", "RUT": "76489600-9", "Año": 2022, "P1": 366.702493, "P2": 138.4668613568, "B1g": 228.2356316432, "D1": 108.466554, "B2g": 119.7690776432, "Rem": -29.623996, "Activos": 2819.428846, "Patrimonio": 1879.543679, "Aporte": 8.7e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Araucaniacoop", "RUT": "76489600-9", "Año": 2023, "P1": 401.285023, "P2": 151.5252246848, "B1g": 249.7597983152, "D1": 133.805512, "B2g": 115.9542863152001, "Rem": 57.804792, "Activos": null, "Patrimonio": null, "Aporte": 8.9e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Araucaniacoop", "RUT": "76489600-9", "Año": 2024, "P1": 418.517464, "P2": 158.0321944064, "B1g": 260.4852695936, "D1": 133.176597, "B2g": 127.3086725936001, "Rem": 53.358415, "Activos": 2970.090993, "Patrimonio": 2139.169467, "Aporte": 8.4e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Bancrece", "RUT": "65144029-7", "Año": 2021, "P1": 1.694809, "P2": 0.6399598784, "B1g": 1.0548491216, "D1": null, "B2g": null, "Rem": -0.213368, "Activos": null, "Patrimonio": null, "Aporte": 0.0}, {"Entidad": "Cooperativa de Ahorro y Crédito Bancrece", "RUT": "65144029-7", "Año": 2022, "P1": 2.92309, "P2": 1.103758784, "B1g": 1.819331216, "D1": 1.282661, "B2g": 0.5366702160000003, "Rem": -0.394412, "Activos": 17.197674, "Patrimonio": 1.71025, "Aporte": 1e-06}, {"Entidad": "Cooperativa de Ahorro y Crédito Bancrece", "RUT": "65144029-7", "Año": 2023, "P1": 5.0178, "P2": 1.89472128, "B1g": 3.123078720000001, "D1": 1.543726, "B2g": 1.579352720000001, "Rem": 0.245738, "Activos": 26.55487, "Patrimonio": 2.446476, "Aporte": 1e-06}, {"Entidad": "Cooperativa de Ahorro y Crédito Bancrece", "RUT": "65144029-7", "Año": 2024, "P1": 8.197293, "P2": 3.0952978368, "B1g": 5.101995163200001, "D1": 2.45793, "B2g": 2.644065163200001, "Rem": 1.167724, "Activos": 42.551814, "Patrimonio": 4.076304, "Aporte": 2e-06}, {"Entidad": "Cooperativa de Ahorro y Crédito Bansur", "RUT": "65002821-K", "Año": 2019, "P1": 1089.425725, "P2": 411.36715376, "B1g": 678.0585712400001, "D1": 352.765347, "B2g": 325.2932242400001, "Rem": 116.469679, "Activos": 6882.53318, "Patrimonio": 1073.099833, "Aporte": 0.000347}, {"Entidad": "Cooperativa de Ahorro y Crédito Bansur", "RUT": "65002821-K", "Año": 2020, "P1": 1039.619194, "P2": 392.5602076544, "B1g": 647.0589863456001, "D1": 345.745043, "B2g": 301.3139433456001, "Rem": 6.20403, "Activos": 7186.034334, "Patrimonio": 1113.45389, "Aporte": 0.000321}, {"Entidad": "Cooperativa de Ahorro y Crédito Bansur", "RUT": "65002821-K", "Año": 2021, "P1": 1117.933465, "P2": 422.131676384, "B1g": 695.8017886160001, "D1": 327.757518, "B2g": 368.0442706160001, "Rem": 105.1855, "Activos": 7292.089485, "Patrimonio": 1336.762659, "Aporte": 0.00029}, {"Entidad": "Cooperativa de Ahorro y Crédito Bansur", "RUT": "65002821-K", "Año": 2022, "P1": 1485.375331, "P2": 560.8777249856, "B1g": 924.4976060144, "D1": 391.897951, "B2g": 532.5996550144, "Rem": 42.594128, "Activos": 8250.340858, "Patrimonio": 1765.213931, "Aporte": 0.000352}, {"Entidad": "Cooperativa de Ahorro y Crédito Bansur", "RUT": "65002821-K", "Año": 2023, "P1": 1740.008741, "P2": 657.0273006016, "B1g": 1082.9814403984, "D1": 416.088716, "B2g": 666.8927243984001, "Rem": 40.183435, "Activos": 10172.809776, "Patrimonio": 1853.645526, "Aporte": 0.000384}, {"Entidad": "Cooperativa de Ahorro y Crédito Cajanova", "RUT": "65461730-9", "Año": 2020, "P1": 259.091066, "P2": 97.8327865216, "B1g": 161.2582794784, "D1": 94.295685, "B2g": 66.96259447840002, "Rem": 23.530015, "Activos": 2384.80372, "Patrimonio": 1188.516979, "Aporte": 8e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Cajanova", "RUT": "65461730-9", "Año": 2021, "P1": 237.668309, "P2": 89.74355347839999, "B1g": 147.9247555216, "D1": 87.097456, "B2g": 60.82729952160003, "Rem": 16.322393, "Activos": 1941.571247, "Patrimonio": 1214.539199, "Aporte": 6.2e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Cajanova", "RUT": "65461730-9", "Año": 2022, "P1": 510.611395, "P2": 192.806862752, "B1g": 317.804532248, "D1": 82.871102, "B2g": 234.933430248, "Rem": 34.302946, "Activos": 2055.263419, "Patrimonio": 1395.810643, "Aporte": 0.000121}, {"Entidad": "Cooperativa de Ahorro y Crédito Cajanova", "RUT": "65461730-9", "Año": 2023, "P1": 286.656368, "P2": 108.2414445568, "B1g": 178.4149234432, "D1": 104.315637, "B2g": 74.0992864432, "Rem": -183.418694, "Activos": 6665.483859, "Patrimonio": 1327.81824, "Aporte": 6.3e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Cajanova", "RUT": "65461730-9", "Año": 2024, "P1": 500.802333, "P2": 189.1029609408, "B1g": 311.6993720592, "D1": 97.170652, "B2g": 214.5287200592, "Rem": 257.067385, "Activos": 10126.419297, "Patrimonio": 1578.19395, "Aporte": 0.0001}, {"Entidad": "Cooperativa de Ahorro y Crédito Coosagro Ltda", "RUT": "70022600-K", "Año": 2023, "P1": 88.925671, "P2": 33.5783333696, "B1g": 55.34733763040001, "D1": 34.868674, "B2g": 20.47866363040001, "Rem": 9.077125, "Activos": 632.053594, "Patrimonio": 579.281155, "Aporte": 2e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito de Educadores", "RUT": "70350700-K", "Año": 2017, "P1": 370.305178, "P2": 139.8272352128, "B1g": 230.4779427872, "D1": 343.648138, "B2g": -113.1701952128, "Rem": -267.827451, "Activos": 1331.783304, "Patrimonio": 1180.939712, "Aporte": 0.000129}, {"Entidad": "Cooperativa de Ahorro y Crédito de Educadores", "RUT": "70350700-K", "Año": 2018, "P1": 275.195387, "P2": 103.9137781312, "B1g": 171.2816088688, "D1": 285.650808, "B2g": -114.3691991312, "Rem": -158.692778, "Activos": 1119.830958, "Patrimonio": 1024.086081, "Aporte": 9e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Dreves Limita", "RUT": "83990500-9", "Año": 2017, "P1": null, "P2": null, "B1g": null, "D1": 86.666, "B2g": null, "Rem": -96.234, "Activos": 183.104, "Patrimonio": 94.413, "Aporte": null}, {"Entidad": "Cooperativa de Ahorro y Crédito Dreves Limita", "RUT": "83990500-9", "Año": 2018, "P1": null, "P2": null, "B1g": null, "D1": 70.504, "B2g": null, "Rem": -66.778, "Activos": 98.651, "Patrimonio": 12.057, "Aporte": null}, {"Entidad": "Cooperativa de Ahorro y Crédito Endógena Mapu", "RUT": "65111485-3", "Año": 2015, "P1": 0.0, "P2": 0.0, "B1g": 0.0, "D1": null, "B2g": null, "Rem": -0.000112, "Activos": 0.02802, "Patrimonio": 0.02802, "Aporte": 0.0}, {"Entidad": "Cooperativa de Ahorro y Crédito Endógena Mapu", "RUT": "65111485-3", "Año": 2016, "P1": 0.002191, "P2": 0.0008273215999999999, "B1g": 0.0013636784, "D1": null, "B2g": null, "Rem": -0.017597, "Activos": 0.026606, "Patrimonio": 0.023667, "Aporte": 0.0}, {"Entidad": "Cooperativa de Ahorro y Crédito Endógena Mapu", "RUT": "65111485-3", "Año": 2017, "P1": null, "P2": null, "B1g": null, "D1": 11.793, "B2g": null, "Rem": 1.686, "Activos": 47.656, "Patrimonio": 43.527, "Aporte": null}, {"Entidad": "Cooperativa de Ahorro y Crédito Endógena Mapu", "RUT": "65111485-3", "Año": 2018, "P1": null, "P2": null, "B1g": null, "D1": 19.603, "B2g": null, "Rem": -5.171, "Activos": 62.722, "Patrimonio": 58.197, "Aporte": null}, {"Entidad": "Cooperativa de Ahorro y Crédito Financiera Ag", "RUT": "76177376-3", "Año": 2016, "P1": 0.852054, "P2": 0.3217355904, "B1g": 0.5303184096000001, "D1": 0.167966, "B2g": 0.3623524096000001, "Rem": 0.281987, "Activos": 5.493493, "Patrimonio": 2.213466, "Aporte": 0.0}, {"Entidad": "Cooperativa de Ahorro y Crédito Financiera Ag", "RUT": "76177376-3", "Año": 2017, "P1": 1160.472, "P2": 438.1942272, "B1g": 722.2777728000001, "D1": 202.545, "B2g": 519.7327728000001, "Rem": 392.78, "Activos": 7092.565, "Patrimonio": 2914.728, "Aporte": 0.000403}, {"Entidad": "Cooperativa de Ahorro y Crédito Financiera Ag", "RUT": "76177376-3", "Año": 2018, "P1": 1249.561, "P2": 471.8342335999999, "B1g": 777.7267664000001, "D1": 217.369, "B2g": 560.3577664000001, "Rem": 410.926, "Activos": 7640.811, "Patrimonio": 4095.287, "Aporte": 0.000411}, {"Entidad": "Cooperativa de Ahorro y Crédito Isla de Maipo", "RUT": "70000770-7", "Año": 2019, "P1": 786.225558, "P2": 296.8787707008, "B1g": 489.3467872992001, "D1": null, "B2g": null, "Rem": 23.657494, "Activos": 6787.012874, "Patrimonio": 6660.153654, "Aporte": 0.00025}, {"Entidad": "Cooperativa de Ahorro y Crédito Isla de Maipo", "RUT": "70000770-7", "Año": 2020, "P1": 678.074962, "P2": 256.0411056512, "B1g": 422.0338563488, "D1": null, "B2g": null, "Rem": 31.126212, "Activos": 6891.818737, "Patrimonio": 6783.90595, "Aporte": 0.00021}, {"Entidad": "Cooperativa de Ahorro y Crédito Isla de Maipo", "RUT": "70000770-7", "Año": 2021, "P1": 772.607722, "P2": 291.7366758272, "B1g": 480.8710461728, "D1": null, "B2g": null, "Rem": -188.247135, "Activos": 8516.795944, "Patrimonio": 8429.692184, "Aporte": 0.000201}, {"Entidad": "Cooperativa de Ahorro y Crédito Isla de Maipo", "RUT": "70000770-7", "Año": 2022, "P1": 1101.046779, "P2": 415.7552637504, "B1g": 685.2915152496, "D1": null, "B2g": null, "Rem": -412.353422, "Activos": 8475.010106, "Patrimonio": 8289.051664, "Aporte": 0.000261}, {"Entidad": "Cooperativa de Ahorro y Crédito Isla de Maipo", "RUT": "70000770-7", "Año": 2023, "P1": 1270.017801, "P2": 479.5587216576, "B1g": 790.4590793424001, "D1": null, "B2g": null, "Rem": 170.643433, "Activos": 8374.354244, "Patrimonio": 8133.99734, "Aporte": 0.00028}, {"Entidad": "Cooperativa de Ahorro y Crédito Lautaro Rosas", "RUT": "70286300-7", "Año": 2015, "P1": 3368.876924, "P2": 1272.0879265024, "B1g": 2096.7889974976, "D1": 984.363593, "B2g": 1112.4254044976, "Rem": 582.303612, "Activos": 28146.627666, "Patrimonio": 23719.670843, "Aporte": 0.001322}, {"Entidad": "Cooperativa de Ahorro y Crédito Libercoop Lim", "RUT": "83380000-0", "Año": 2015, "P1": 553.038363, "P2": 208.8272858688, "B1g": 344.2110771312001, "D1": 164.468562, "B2g": 179.7425151312001, "Rem": null, "Activos": null, "Patrimonio": null, "Aporte": 0.000217}, {"Entidad": "Cooperativa de Ahorro y Crédito Libercoop Lim", "RUT": "83380000-0", "Año": 2016, "P1": 560.690581, "P2": 211.7167633856, "B1g": 348.9738176144, "D1": 202.414142, "B2g": 146.5596756144, "Rem": null, "Activos": null, "Patrimonio": null, "Aporte": 0.000207}, {"Entidad": "Cooperativa de Ahorro y Crédito Libercoop Lim", "RUT": "83380000-0", "Año": 2017, "P1": 638.428186, "P2": 241.0704830336, "B1g": 397.3577029664, "D1": 198.855749, "B2g": 198.5019539664, "Rem": null, "Activos": null, "Patrimonio": null, "Aporte": 0.000222}, {"Entidad": "Cooperativa de Ahorro y Crédito Libercoop Lim", "RUT": "83380000-0", "Año": 2018, "P1": 657.185686, "P2": 248.1533150336, "B1g": 409.0323709664, "D1": 224.94058, "B2g": 184.0917909664, "Rem": 12.754144, "Activos": 4801.526607, "Patrimonio": 618.553271, "Aporte": 0.000216}, {"Entidad": "Cooperativa de Ahorro y Crédito Libercoop Lim", "RUT": "83380000-0", "Año": 2019, "P1": 757.915522, "P2": 286.1889011072, "B1g": 471.7266208928, "D1": 263.389306, "B2g": 208.3373148928001, "Rem": 11.276717, "Activos": 5578.489121, "Patrimonio": 657.590113, "Aporte": 0.000241}, {"Entidad": "Cooperativa de Ahorro y Crédito Libercoop Lim", "RUT": "83380000-0", "Año": 2022, "P1": 968.553494, "P2": 365.7257993344, "B1g": 602.8276946656, "D1": 392.929789, "B2g": 209.8979056656, "Rem": 10.828047, "Activos": null, "Patrimonio": null, "Aporte": 0.000229}, {"Entidad": "Cooperativa de Ahorro y Crédito Libercoop Lim", "RUT": "83380000-0", "Año": 2023, "P1": 5438.851083, "P2": 2053.7101689408, "B1g": 3385.1409140592, "D1": 1094.03332, "B2g": 2291.1075940592, "Rem": 619.409678, "Activos": 19732.572795, "Patrimonio": 6512.747375, "Aporte": 0.0012}, {"Entidad": "Cooperativa de Ahorro y Crédito Libercoop Lim", "RUT": "83380000-0", "Año": 2023, "P1": 5438.851083, "P2": 2053.7101689408, "B1g": 3385.1409140592, "D1": 1094.03332, "B2g": 2291.1075940592, "Rem": 619.409678, "Activos": 8943.720548, "Patrimonio": 906.819914, "Aporte": 0.0012}, {"Entidad": "Cooperativa de Ahorro y Crédito Limarí Limita", "RUT": "76005094-6", "Año": 2016, "P1": 0.139838, "P2": 0.05280282879999999, "B1g": 0.0870351712, "D1": 0.071817, "B2g": 0.01521817119999999, "Rem": 0.01607, "Activos": 0.728656, "Patrimonio": 0.083831, "Aporte": 0.0}, {"Entidad": "Cooperativa de Ahorro y Crédito Limarí Limita", "RUT": "76005094-6", "Año": 2017, "P1": 0.131367, "P2": 0.0496041792, "B1g": 0.08176282080000001, "D1": 0.083293, "B2g": -0.001530179199999995, "Rem": 0.009038, "Activos": 0.791165, "Patrimonio": 0.081389, "Aporte": 0.0}, {"Entidad": "Cooperativa de Ahorro y Crédito Mujercoop", "RUT": "70689800-K", "Año": 2014, "P1": 247.133243, "P2": 93.3175125568, "B1g": 153.8157304432, "D1": 74.356209, "B2g": 79.4595214432, "Rem": null, "Activos": 1172.633496, "Patrimonio": 1113.452676, "Aporte": 0.000106}, {"Entidad": "Cooperativa de Ahorro y Crédito Mujercoop", "RUT": "70689800-K", "Año": 2015, "P1": 251.804914, "P2": 95.0815355264, "B1g": 156.7233784736, "D1": 86.255316, "B2g": 70.46806247360001, "Rem": null, "Activos": 1286.845515, "Patrimonio": 1214.822967, "Aporte": 9.9e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Mujercoop", "RUT": "70689800-K", "Año": 2016, "P1": 235.771571, "P2": 89.0273452096, "B1g": 146.7442257904, "D1": 93.099451, "B2g": 53.64477479040001, "Rem": null, "Activos": 1369.730281, "Patrimonio": 1282.193239, "Aporte": 8.7e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Mujercoop", "RUT": "70689800-K", "Año": 2017, "P1": 227.747241, "P2": 85.9973582016, "B1g": 141.7498827984, "D1": 101.494456, "B2g": 40.25542679840002, "Rem": 33.685507, "Activos": 1400.710313, "Patrimonio": 1345.560989, "Aporte": 7.9e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Mujercoop", "RUT": "70689800-K", "Año": 2018, "P1": 226.567399, "P2": 85.55184986239999, "B1g": 141.0155491376, "D1": 106.060397, "B2g": 34.95515213760001, "Rem": -19.197058, "Activos": 1397.199807, "Patrimonio": 1347.614781, "Aporte": 7.4e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Mujercoop", "RUT": "70689800-K", "Año": 2022, "P1": 207.970962, "P2": 78.5298352512, "B1g": 129.4411267488, "D1": null, "B2g": null, "Rem": -94.272581, "Activos": 1621.875717, "Patrimonio": 1558.554369, "Aporte": 4.9e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Mujercoop", "RUT": "70689800-K", "Año": 2023, "P1": 259.499529, "P2": 97.9870221504, "B1g": 161.5125068496, "D1": null, "B2g": null, "Rem": 22.827034, "Activos": 1613.158539, "Patrimonio": 1540.33972, "Aporte": 5.7e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Norte Grande ", "RUT": "81863900-7", "Año": 2017, "P1": 2207.230914, "P2": 833.4503931264001, "B1g": 1373.7805208736, "D1": 942.663844, "B2g": 431.1166768736003, "Rem": 20.684132, "Activos": 15720.697153, "Patrimonio": 8261.187743, "Aporte": 0.000766}, {"Entidad": "Cooperativa de Ahorro y Crédito Norte Grande ", "RUT": "81863900-7", "Año": 2018, "P1": 2218.924648, "P2": 837.8659470848, "B1g": 1381.0587009152, "D1": 1353.356801, "B2g": 27.70189991520033, "Rem": 169.188516, "Activos": 15924.489547, "Patrimonio": 8477.363799, "Aporte": 0.000729}, {"Entidad": "Cooperativa de Ahorro y Crédito O'Higgins Ltd", "RUT": "84150700-2", "Año": 2022, "P1": 394.298831, "P2": 148.8872385856, "B1g": 245.4115924144, "D1": 211.760869, "B2g": 33.65072341440001, "Rem": 1.45852, "Activos": 3552.387312, "Patrimonio": 1012.94254, "Aporte": 9.3e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito O'Higgins Ltd", "RUT": "84150700-2", "Año": 2023, "P1": 327.329655, "P2": 123.599677728, "B1g": 203.729977272, "D1": 242.267791, "B2g": -38.53781372799997, "Rem": 3.073919, "Activos": 3579.594935, "Patrimonio": 995.514741, "Aporte": 7.2e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito para el Desar", "RUT": "65677500-9", "Año": 2020, "P1": 4.761814, "P2": 1.7980609664, "B1g": 2.963753033600001, "D1": 1.668205, "B2g": 1.295548033600001, "Rem": 1.120719, "Activos": 31.262546, "Patrimonio": 6.924262, "Aporte": 1e-06}, {"Entidad": "Cooperativa de Ahorro y Crédito para el Desar", "RUT": "65677500-9", "Año": 2021, "P1": 6.951688, "P2": 2.6249573888, "B1g": 4.3267306112, "D1": 2.753337, "B2g": 1.5733936112, "Rem": 1.211909, "Activos": 28.152536, "Patrimonio": 8.397029, "Aporte": 2e-06}, {"Entidad": "Cooperativa de Ahorro y Crédito para el Desar", "RUT": "65677500-9", "Año": 2022, "P1": 7.36768, "P2": 2.782035968, "B1g": 4.585644032, "D1": 3.566799, "B2g": 1.018845032, "Rem": -1.55902, "Activos": 33.988987, "Patrimonio": 8.309169, "Aporte": 2e-06}, {"Entidad": "Cooperativa de Ahorro y Crédito para el Desar", "RUT": "65677500-9", "Año": 2023, "P1": 9903.39, "P2": 3739.520064, "B1g": 6163.869936, "D1": 3648.234, "B2g": 2515.635936, "Rem": 8.864, "Activos": 40048.604, "Patrimonio": 9413.563, "Aporte": 0.002185}, {"Entidad": "Cooperativa de Ahorro y Crédito para el Desar", "RUT": "65677500-9", "Año": 2024, "P1": 10773.726, "P2": 4068.1589376, "B1g": 6705.567062400001, "D1": 3985.462, "B2g": 2720.105062400001, "Rem": 397.145, "Activos": 41370.8, "Patrimonio": 10163.465, "Aporte": 0.002158}, {"Entidad": "Cooperativa de Ahorro y Crédito Parinacoop Lt", "RUT": "65443640-1", "Año": 2017, "P1": 600.234945, "P2": 226.648715232, "B1g": 373.5862297680001, "D1": 221.116732, "B2g": 152.4694977680001, "Rem": 80.089242, "Activos": 4021.786459, "Patrimonio": 1242.899699, "Aporte": 0.000208}, {"Entidad": "Cooperativa de Ahorro y Crédito Parinacoop Lt", "RUT": "65443640-1", "Año": 2018, "P1": 595.695796, "P2": 224.9347325696, "B1g": 370.7610634304, "D1": 239.347336, "B2g": 131.4137274304, "Rem": 55.039586, "Activos": 4078.930963, "Patrimonio": 1349.324511, "Aporte": 0.000196}, {"Entidad": "Cooperativa de Ahorro y Crédito Parinacoop Lt", "RUT": "65443640-1", "Año": 2022, "P1": 557.86332, "P2": 210.649189632, "B1g": 347.214130368, "D1": 304.896674, "B2g": 42.31745636800002, "Rem": 26.759331, "Activos": 4649.905583, "Patrimonio": 1506.735873, "Aporte": 0.000132}, {"Entidad": "Cooperativa de Ahorro y Crédito Parinacoop Lt", "RUT": "65443640-1", "Año": 2023, "P1": 614.415153, "P2": 232.0031617728, "B1g": 382.4119912272001, "D1": 315.406007, "B2g": 67.00598422720009, "Rem": -95.109939, "Activos": 5197.074986, "Patrimonio": 1465.333286, "Aporte": 0.000136}, {"Entidad": "Cooperativa de Ahorro y Crédito Parinacoop Lt", "RUT": "65443640-1", "Año": 2024, "P1": 777.811045, "P2": 293.701450592, "B1g": 484.1095944080001, "D1": 273.591398, "B2g": 210.5181964080001, "Rem": 87.83869, "Activos": 4970.485564, "Patrimonio": 1424.872891, "Aporte": 0.000156}, {"Entidad": "Cooperativa de Ahorro y Crédito Planea", "RUT": "65121042-9", "Año": 2017, "P1": 200.528562, "P2": 75.7195850112, "B1g": 124.8089769888, "D1": 125.480398, "B2g": -0.6714210111999819, "Rem": 15.889036, "Activos": 221.1959, "Patrimonio": 73.086229, "Aporte": 7e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Planea", "RUT": "65121042-9", "Año": 2018, "P1": 204.64546, "P2": 77.274125696, "B1g": 127.371334304, "D1": 129.358632, "B2g": -1.987297695999985, "Rem": 8.767605, "Activos": 422.48599, "Patrimonio": 137.392231, "Aporte": 6.7e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Sanfecoop", "RUT": "70017510-3", "Año": 2021, "P1": 616.551017, "P2": 232.8096640192, "B1g": 383.7413529808001, "D1": 318.783717, "B2g": 64.95763598080003, "Rem": -318.14743, "Activos": 7831.744375, "Patrimonio": 4770.911218, "Aporte": 0.00016}, {"Entidad": "Cooperativa de Ahorro y Crédito Sanfecoop", "RUT": "70017510-3", "Año": 2022, "P1": 907.445645, "P2": 342.651475552, "B1g": 564.794169448, "D1": 364.702337, "B2g": 200.091832448, "Rem": -473.064301, "Activos": 6889.294992, "Patrimonio": 4303.779438, "Aporte": 0.000215}, {"Entidad": "Cooperativa de Ahorro y Crédito Sanfecoop", "RUT": "70017510-3", "Año": 2022, "P1": 2872.841728, "P2": 1084.7850364928, "B1g": 1788.0566915072, "D1": 933.618635, "B2g": 854.4380565072001, "Rem": 115.01714, "Activos": 6889.294992, "Patrimonio": 4303.779438, "Aporte": 0.00068}, {"Entidad": "Cooperativa de Ahorro y Crédito Sanfecoop", "RUT": "70017510-3", "Año": 2023, "P1": 1105.34149, "P2": 417.376946624, "B1g": 687.964543376, "D1": 377.162627, "B2g": 310.8019163760001, "Rem": 112.303841, "Activos": 6091.644787, "Patrimonio": 3829.613253, "Aporte": 0.000244}, {"Entidad": "Cooperativa de Ahorro y Crédito Santa Inés Lt", "RUT": "70018610-5", "Año": 2024, "P1": 1581.380719, "P2": 597.1293594944, "B1g": 984.2513595056001, "D1": 614.069702, "B2g": 370.1816575056001, "Rem": 78.767931, "Activos": 9645.093032, "Patrimonio": 5780.949168, "Aporte": 0.000317}, {"Entidad": "Cooperativa de Ahorro y Crédito Solidaridad /", "RUT": "65085321-0", "Año": 2014, "P1": 0.759577, "P2": 0.2868162752, "B1g": 0.4727607248, "D1": 3.867388, "B2g": -3.3946272752, "Rem": -6.852924, "Activos": 53.964438, "Patrimonio": 19.068257, "Aporte": 0.0}, {"Entidad": "Cooperativa de Ahorro y Crédito Solidaridad /", "RUT": "65085321-0", "Año": 2015, "P1": 17.866682, "P2": 6.7464591232, "B1g": 11.1202228768, "D1": 12.108712, "B2g": -0.988489123199999, "Rem": -39.372531, "Activos": 125.059015, "Patrimonio": 9.192584, "Aporte": 7e-06}, {"Entidad": "Cooperativa de Ahorro y Crédito Solidaridad /", "RUT": "65085321-0", "Año": 2016, "P1": 45.560436, "P2": 17.2036206336, "B1g": 28.35681536640001, "D1": 25.143662, "B2g": 3.213153366400007, "Rem": -33.583428, "Activos": null, "Patrimonio": null, "Aporte": 1.7e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Solidaridad /", "RUT": "65085321-0", "Año": 2017, "P1": 61.948441, "P2": 23.3917313216, "B1g": 38.5567096784, "D1": 32.888181, "B2g": 5.668528678400001, "Rem": -24.558802, "Activos": null, "Patrimonio": null, "Aporte": 2.2e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Solidaridad /", "RUT": "65085321-0", "Año": 2023, "P1": 452.213393, "P2": 170.7557771968, "B1g": 281.4576158032, "D1": 201.058096, "B2g": 80.39951980320004, "Rem": 54.090326, "Activos": 1337.966591, "Patrimonio": 601.069464, "Aporte": 0.0001}, {"Entidad": "Cooperativa de Ahorro y Crédito Solidaridad /", "RUT": "65085321-0", "Año": 2024, "P1": 524.46467, "P2": 198.037859392, "B1g": 326.426810608, "D1": 230.396436, "B2g": 96.03037460799999, "Rem": 87.44513, "Activos": 1564.580889, "Patrimonio": 785.342312, "Aporte": 0.000105}, {"Entidad": "Cooperativa de Ahorro y Crédito Talcahuano Lt", "RUT": "70013720-1", "Año": 2017, "P1": 273.177332, "P2": 103.1517605632, "B1g": 170.0255714368, "D1": 78.846155, "B2g": 91.1794164368, "Rem": 88.185051, "Activos": 1535.063974, "Patrimonio": 1501.946743, "Aporte": 9.5e-05}, {"Entidad": "Cooperativa de Ahorro y Crédito Talcahuano Lt", "RUT": "70013720-1", "Año": 2023, "P1": 677.231944, "P2": 255.7227820544, "B1g": 421.5091619456001, "D1": 108.199987, "B2g": 313.3091749456, "Rem": 277.956854, "Activos": 3804.468786, "Patrimonio": 3746.945512, "Aporte": 0.000149}, {"Entidad": "Cooperativa de Ahorro y Crédito Talcahuano Lt", "RUT": "70013720-1", "Año": 2024, "P1": 722.329775, "P2": 272.75172304, "B1g": 449.5780519600001, "D1": 138.757302, "B2g": 310.8207499600001, "Rem": 219.949306, "Activos": 4210.479412, "Patrimonio": 3409.976043, "Aporte": 0.000145}, {"Entidad": "Cooperativa de Ahorro y Crédito Valles de Chi", "RUT": "65624290-6", "Año": 2018, "P1": 0.308227, "P2": 0.1163865152, "B1g": 0.1918404848, "D1": 0.112391, "B2g": 0.07944948480000001, "Rem": 0.061937, "Activos": 3.319625, "Patrimonio": 1.281879, "Aporte": 0.0}, {"Entidad": "Cooperativa de Ahorro y Crédito Valles de Chi", "RUT": "65624290-6", "Año": 2019, "P1": 0.351286, "P2": 0.1326455936, "B1g": 0.2186404064, "D1": 0.126394, "B2g": 0.09224640640000001, "Rem": 0.073942, "Activos": 3.317151, "Patrimonio": 1.388231, "Aporte": 0.0}, {"Entidad": "Cooperativa de Ahorro y Crédito Valles de Chi", "RUT": "65624290-6", "Año": 2020, "P1": 0.244807, "P2": 0.0924391232, "B1g": 0.1523678768, "D1": 0.125367, "B2g": 0.02700087680000002, "Rem": 0.063537, "Activos": 3.329772, "Patrimonio": 1.443248, "Aporte": 0.0}, {"Entidad": "Cooperativa de Ahorro y Crédito Valles de Chi", "RUT": "65624290-6", "Año": 2021, "P1": 0.261336, "P2": 0.0986804736, "B1g": 0.1626555264, "D1": 0.133767, "B2g": 0.02888852640000003, "Rem": 0.046878, "Activos": 3.5809, "Patrimonio": 1.590547, "Aporte": 0.0}, {"Entidad": "Cooperativa de Ahorro y Crédito Valles de Chi", "RUT": "65624290-6", "Año": 2022, "P1": 611.017, "P2": 230.7200192, "B1g": 380.2969808000001, "D1": 143.923, "B2g": 236.3739808000001, "Rem": 7.701, "Activos": 3455.324, "Patrimonio": 1903.929, "Aporte": 0.000145}, {"Entidad": "Cooperativa de Ahorro y Crédito Valles de Chi", "RUT": "65624290-6", "Año": 2023, "P1": 448.933, "P2": 169.5171008, "B1g": 279.4158992, "D1": 253.252, "B2g": 26.1638992, "Rem": -223.799, "Activos": 3312.891, "Patrimonio": 1686.759, "Aporte": 9.9e-05}, {"Entidad": "Cooperativa del Personal de la Universidad de", "RUT": "82878900-7", "Año": 2015, "P1": 211939.5, "P2": 80028.35519999999, "B1g": 131911.1448, "D1": 47689.1, "B2g": 84222.0448, "Rem": 42144.5, "Activos": 1277438.4, "Patrimonio": 431270.5, "Aporte": 0.08316}, {"Entidad": "Cooperativa del Personal de la Universidad de", "RUT": "82878900-7", "Año": 2016, "P1": 215779.1, "P2": 81478.18816, "B1g": 134300.91184, "D1": 52321.1, "B2g": 81979.81184000001, "Rem": 47551.9, "Activos": 1471455.7, "Patrimonio": 451853.4, "Aporte": 0.079579}, {"Entidad": "Cooperativa Macul Limitada", "RUT": "70777900-4", "Año": 2018, "P1": 101.411831, "P2": 38.2931073856, "B1g": 63.11872361440001, "D1": 43.011158, "B2g": 20.10756561440001, "Rem": -12.133134, "Activos": 515.327272, "Patrimonio": 62.661435, "Aporte": 3.3e-05}, {"Entidad": "Cooperativa Unión y Patria", "RUT": "82835000-5", "Año": 2018, "P1": 2617.422214, "P2": 988.3386280064001, "B1g": 1629.0835859936, "D1": 1127.85408, "B2g": 501.2295059936002, "Rem": 276.868805, "Activos": 13206.215371, "Patrimonio": null, "Aporte": 0.00086}, {"Entidad": "Cooperativa Unión y Patria", "RUT": "82835000-5", "Año": 2022, "P1": 2631.367906, "P2": 993.6045213056, "B1g": 1637.7633846944, "D1": 1596.062313, "B2g": 41.7010716944003, "Rem": -1269.937664, "Activos": 13905.14855, "Patrimonio": 6571.061247, "Aporte": 0.000623}, {"Entidad": "Cooperativa Unión y Patria", "RUT": "82835000-5", "Año": 2023, "P1": 4050.859842, "P2": 1529.6046763392, "B1g": 2521.2551656608, "D1": 1590.610225, "B2g": 930.6449406608003, "Rem": 139.984125, "Activos": 16601.979149, "Patrimonio": 7406.606622, "Aporte": 0.000894}, {"Entidad": "Cooperativa Unión y Patria", "RUT": "82835000-5", "Año": 2024, "P1": 96.950816, "P2": 36.6086281216, "B1g": 60.34218787840001, "D1": 1721.585714, "B2g": -1661.2435261216, "Rem": 554.226392, "Activos": 17121.340457, "Patrimonio": 7637.095078, "Aporte": 1.9e-05}, {"Entidad": "Cooperlacar Ltda.", "RUT": "81189600-4", "Año": 2018, "P1": 267.827746, "P2": 101.1317568896, "B1g": 166.6959891104, "D1": 230.795739, "B2g": -64.09974988959999, "Rem": -12.99656, "Activos": 1227.993564, "Patrimonio": 1153.799977, "Aporte": 8.8e-05}, {"Entidad": "Cooperlacar Ltda.", "RUT": "81189600-4", "Año": 2019, "P1": 277.184199, "P2": 104.6647535424, "B1g": 172.5194454576, "D1": 238.771183, "B2g": -66.25173754240001, "Rem": 21.773688, "Activos": 1299.260106, "Patrimonio": 1193.390892, "Aporte": 8.8e-05}, {"Entidad": "Cooperlacar Ltda.", "RUT": "81189600-4", "Año": 2020, "P1": 295.691217, "P2": 111.6530035392, "B1g": 184.0382134608, "D1": 213.26956, "B2g": -29.23134653919999, "Rem": 25.565755, "Activos": 1360.813709, "Patrimonio": 1263.131297, "Aporte": 9.1e-05}, {"Entidad": "Cooperlacar Ltda.", "RUT": "81189600-4", "Año": 2021, "P1": 321.614661, "P2": 121.4416959936, "B1g": 200.1729650064, "D1": 262.047819, "B2g": -61.87485399359997, "Rem": 1.414678, "Activos": 1570.629585, "Patrimonio": 1449.04262, "Aporte": 8.4e-05}, {"Entidad": "Cooperlacar Ltda.", "RUT": "81189600-4", "Año": 2022, "P1": 366.852127, "P2": 138.5233631552, "B1g": 228.3287638448, "D1": 267.060591, "B2g": -38.73182715519997, "Rem": -113.151344, "Activos": 1489.904813, "Patrimonio": 1329.044363, "Aporte": 8.7e-05}, {"Entidad": "Cooperlacar Ltda.", "RUT": "81189600-4", "Año": 2023, "P1": 444.641986, "P2": 167.8968139136, "B1g": 276.7451720864, "D1": 305.862363, "B2g": -29.11719091359998, "Rem": 15.881823, "Activos": 1639.58769, "Patrimonio": 1491.722963, "Aporte": 9.8e-05}, {"Entidad": "Cooperlacar Ltda.", "RUT": "81189600-4", "Año": 2024, "P1": 442.467427, "P2": 167.0757004352, "B1g": 275.3917265648, "D1": 284.232709, "B2g": -8.840982435199976, "Rem": 31.801373, "Activos": 1697.412318, "Patrimonio": 1532.548374, "Aporte": 8.9e-05}, {"Entidad": "Mantención CAP", "RUT": "70343800-8", "Año": 2020, "P1": 373.05653, "P2": 140.866145728, "B1g": 232.190384272, "D1": 74.662506, "B2g": 157.527878272, "Rem": null, "Activos": null, "Patrimonio": null, "Aporte": 0.000115}, {"Entidad": "Mantención CAP", "RUT": "70343800-8", "Año": 2021, "P1": 446.078053, "P2": 168.4390728128, "B1g": 277.6389801872, "D1": 77.433228, "B2g": 200.2057521872001, "Rem": null, "Activos": null, "Patrimonio": null, "Aporte": 0.000116}, {"Entidad": "Mantención CAP", "RUT": "70343800-8", "Año": 2022, "P1": 852.197552, "P2": 321.7897956352, "B1g": 530.4077563648001, "D1": 75.444947, "B2g": 454.9628093648001, "Rem": null, "Activos": null, "Patrimonio": null, "Aporte": 0.000202}, {"Entidad": "Mantención CAP", "RUT": "70343800-8", "Año": 2023, "P1": 4105.682892, "P2": 1550.3058600192, "B1g": 2555.3770319808, "D1": 438.303859, "B2g": 2117.0731729808, "Rem": null, "Activos": 7889.817947, "Patrimonio": 7274.423801, "Aporte": 0.000906}, {"Entidad": "Oriencoop / Gestión de Recaudación y Cobranza", "RUT": "70010920-8", "Año": 2016, "P1": null, "P2": null, "B1g": null, "D1": null, "B2g": null, "Rem": 0.047277, "Activos": 1.687896, "Patrimonio": 0.511634, "Aporte": null}, {"Entidad": "Sociedad Cooperativa de Ahorro y Crédito Somn", "RUT": "70005180-3", "Año": 2019, "P1": 1756.149371, "P2": 663.1220024895999, "B1g": 1093.0273685104, "D1": 529.271333, "B2g": 563.7560355104, "Rem": 330.115243, "Activos": 12489.057712, "Patrimonio": 5307.974664, "Aporte": 0.000559}, {"Entidad": "Sociedad Cooperativa de Ahorro y Crédito Somn", "RUT": "70005180-3", "Año": 2020, "P1": 1927.250855, "P2": 727.729922848, "B1g": 1199.520932152, "D1": 559.40834, "B2g": 640.1125921520002, "Rem": 260.728406, "Activos": 14013.131018, "Patrimonio": 5644.829396, "Aporte": 0.000596}, {"Entidad": "Sociedad Cooperativa de Ahorro y Crédito Somn", "RUT": "70005180-3", "Año": 2021, "P1": 2286.059636, "P2": 863.2161185535999, "B1g": 1422.8435174464, "D1": 629.909446, "B2g": 792.9340714464, "Rem": 383.421146, "Activos": 17342.468542, "Patrimonio": 7201.095094, "Aporte": 0.000594}, {"Entidad": "Sociedad Cooperativa de Ahorro y Crédito Somn", "RUT": "70005180-3", "Año": 2022, "P1": 2386.936911, "P2": 901.3073775935999, "B1g": 1485.6295334064, "D1": 596.338434, "B2g": 889.2910994064, "Rem": 103.95371, "Activos": 15117.112437, "Patrimonio": 7326.726273, "Aporte": 0.000565}, {"Entidad": "Sociedad Cooperativa de Ahorro y Crédito Somn", "RUT": "70005180-3", "Año": 2023, "P1": 2350.629722, "P2": 887.5977830272001, "B1g": 1463.0319389728, "D1": 633.509528, "B2g": 829.5224109728001, "Rem": 585.037334, "Activos": 14070.088208, "Patrimonio": 7958.528431, "Aporte": 0.000519}, {"Entidad": "Stella Maris", "RUT": "81806100-5", "Año": 2015, "P1": 81.99722, "P2": 30.962150272, "B1g": 51.035069728, "D1": 62.651111, "B2g": -11.616041272, "Rem": 7.676123, "Activos": 398.165761, "Patrimonio": 385.14699, "Aporte": 3.2e-05}, {"Entidad": "Stella Maris", "RUT": "81806100-5", "Año": 2015, "P1": 81.99722, "P2": 30.962150272, "B1g": 51.035069728, "D1": 62.651111, "B2g": -11.616041272, "Rem": 7.676123, "Activos": 386.944373, "Patrimonio": 374.292506, "Aporte": 3.2e-05}, {"Entidad": "Stella Maris", "RUT": "81806100-5", "Año": 2016, "P1": 93.097882, "P2": 35.1537602432, "B1g": 57.94412175680001, "D1": 72.977333, "B2g": -15.03321124319999, "Rem": -15.129906, "Activos": 407.344165, "Patrimonio": 388.000639, "Aporte": 3.4e-05}, {"Entidad": "Stella Maris", "RUT": "81806100-5", "Año": 2018, "P1": 64.046395, "P2": 24.183918752, "B1g": 39.86247624800001, "D1": 65.899146, "B2g": -26.03666975199999, "Rem": -39.049066, "Activos": 390.465174, "Patrimonio": 363.934219, "Aporte": 2.1e-05}, {"Entidad": "Stella Maris", "RUT": "81806100-5", "Año": 2023, "P1": 0.343607, "P2": 0.1297460032, "B1g": 0.2138609968, "D1": 58.504481, "B2g": -58.2906200032, "Rem": -21.954732, "Activos": 456.39968, "Patrimonio": 392.833316, "Aporte": 0.0}, {"Entidad": "Temucoop", "RUT": "85726600-5", "Año": 2015, "P1": 1070.483061, "P2": 404.2144038335999, "B1g": 666.2686571664, "D1": 390.317377, "B2g": 275.9512801664, "Rem": 182.319997, "Activos": 1696.189312, "Patrimonio": 1058.96048, "Aporte": 0.00042}, {"Entidad": "Temucoop", "RUT": "85726600-5", "Año": 2016, "P1": 1244.527272, "P2": 469.9334979072, "B1g": 774.5937740928001, "D1": 397.063462, "B2g": 377.5303120928001, "Rem": 142.809127, "Activos": 7731.35938, "Patrimonio": 2370.690902, "Aporte": 0.000459}, {"Entidad": "Temucoop", "RUT": "85726600-5", "Año": 2017, "P1": 283.515354, "P2": 107.0553976704, "B1g": 176.4599563296, "D1": 150.663799, "B2g": 25.79615732960002, "Rem": null, "Activos": null, "Patrimonio": null, "Aporte": 9.8e-05}, {"Entidad": "Temucoop", "RUT": "85726600-5", "Año": 2018, "P1": 293.823134, "P2": 110.9476153984, "B1g": 182.8755186016, "D1": 142.019949, "B2g": 40.85556960160002, "Rem": null, "Activos": null, "Patrimonio": null, "Aporte": 9.7e-05}, {"Entidad": "Temucoop", "RUT": "85726600-5", "Año": 2022, "P1": 3902.054557, "P2": 1473.4158007232, "B1g": 2428.6387562768, "D1": 149.928906, "B2g": 2278.7098502768, "Rem": 145.01255, "Activos": 2547.752647, "Patrimonio": 1275.685102, "Aporte": 0.000924}, {"Entidad": "Temucoop", "RUT": "85726600-5", "Año": 2023, "P1": 5495.370731, "P2": 2075.0519880256, "B1g": 3420.3187429744, "D1": 147.725964, "B2g": 3272.5927789744, "Rem": 202.084042, "Activos": 2512.16492, "Patrimonio": 1409.722815, "Aporte": 0.001212}], "region": {"regiones": ["R. Metropolitana", "Valparaíso", "Araucanía", "Maule", "Biobío", "Coquimbo", "Sin dato", "Antofagasta", "Arica y Parinacota", "Los Lagos"], "n_cac": [19, 4, 3, 2, 2, 2, 2, 1, 1, 1], "socios": [2490984.0, 43454.0, 3129.0, 346576.0, 2770.0, 8164.0, 63095.0, 12812.0, 1940.0, 4939.0]}, "cmf_table_all": [{"entidad": "AHORROCOOP", "año": 2013, "region": "R. Metropolitana", "socios": 63063, "empleados": 194, "oficinas": 7, "B1g": 4324.49744, "P1": 6948.1, "Activos": 32276.2, "Patrimonio": 11120.3, "pib": 136003000.0, "color": "#27ae60"}, {"entidad": "AHORROCOOP", "año": 2014, "region": "R. Metropolitana", "socios": 63063, "empleados": 194, "oficinas": 7, "B1g": 3548.86256, "P1": 5701.9, "Activos": 27036.7, "Patrimonio": 5788.6, "pib": 144706000.0, "color": "#27ae60"}, {"entidad": "AHORROCOOP", "año": 2015, "region": "R. Metropolitana", "socios": 63063, "empleados": 194, "oficinas": 7, "B1g": 3633.8201599999998, "P1": 5838.4, "Activos": 28433.0, "Patrimonio": 4742.8, "pib": 158623000.0, "color": "#27ae60"}, {"entidad": "AHORROCOOP", "año": 2016, "region": "R. Metropolitana", "socios": 63063, "empleados": 194, "oficinas": 7, "B1g": 4490.616, "P1": 7215.0, "Activos": 33393.5, "Patrimonio": 5265.1, "pib": 168765000.0, "color": "#27ae60"}, {"entidad": "AHORROCOOP", "año": 2017, "region": "R. Metropolitana", "socios": 63063, "empleados": 194, "oficinas": 7, "B1g": 3681.496, "P1": 5915.0, "Activos": 37342.0, "Patrimonio": 4357.0, "pib": 179315000.0, "color": "#27ae60"}, {"entidad": "AHORROCOOP", "año": 2018, "region": "R. Metropolitana", "socios": 63063, "empleados": 194, "oficinas": 7, "B1g": 4737.0864, "P1": 7611.0, "Activos": 42902.0, "Patrimonio": 6131.0, "pib": 189435000.0, "color": "#27ae60"}, {"entidad": "AHORROCOOP", "año": 2019, "region": "R. Metropolitana", "socios": 63063, "empleados": 194, "oficinas": 7, "B1g": 5457.2032, "P1": 8768.0, "Activos": 50812.0, "Patrimonio": 8617.0, "pib": 195548000.0, "color": "#27ae60"}, {"entidad": "AHORROCOOP", "año": 2020, "region": "R. Metropolitana", "socios": 63063, "empleados": 194, "oficinas": 7, "B1g": 5360.1088, "P1": 8612.0, "Activos": 54171.0, "Patrimonio": 10150.0, "pib": 201307000.0, "color": "#27ae60"}, {"entidad": "AHORROCOOP", "año": 2021, "region": "R. Metropolitana", "socios": 63063, "empleados": 194, "oficinas": 7, "B1g": 5759.6896, "P1": 9254.0, "Activos": 58971.0, "Patrimonio": 12549.0, "pib": 239556000.0, "color": "#27ae60"}, {"entidad": "AHORROCOOP", "año": 2022, "region": "R. Metropolitana", "socios": 63063, "empleados": 194, "oficinas": 7, "B1g": 7333.7392, "P1": 11783.0, "Activos": 68830.0, "Patrimonio": 15234.0, "pib": 262954000.0, "color": "#27ae60"}, {"entidad": "AHORROCOOP", "año": 2023, "region": "R. Metropolitana", "socios": 63063, "empleados": 194, "oficinas": 7, "B1g": 7012.5808, "P1": 11267.0, "Activos": 77988.0, "Patrimonio": 17876.0, "pib": 282097000.0, "color": "#27ae60"}, {"entidad": "AHORROCOOP", "año": 2024, "region": "R. Metropolitana", "socios": 63063, "empleados": 194, "oficinas": 7, "B1g": 8668.787199999999, "P1": 13928.0, "Activos": 91740.0, "Patrimonio": 19676.0, "pib": 310681000.0, "color": "#27ae60"}, {"entidad": "AHORROCOOP", "año": 2025, "region": "R. Metropolitana", "socios": 63063, "empleados": 194, "oficinas": 7, "B1g": 10012.5488, "P1": 16087.0, "Activos": 102290.0, "Patrimonio": 21304.0, "pib": 339978000.0, "color": "#27ae60"}, {"entidad": "CAPUAL", "año": 2013, "region": "Sin dato", "socios": 0, "empleados": 291, "oficinas": 31, "B1g": 8936.60592, "P1": 14358.3, "Activos": 97883.1, "Patrimonio": 15636.6, "pib": 136003000.0, "color": "#f39c12"}, {"entidad": "CAPUAL", "año": 2014, "region": "Sin dato", "socios": 0, "empleados": 291, "oficinas": 31, "B1g": 7795.49776, "P1": 12524.9, "Activos": 98515.8, "Patrimonio": 14819.7, "pib": 144706000.0, "color": "#f39c12"}, {"entidad": "CAPUAL", "año": 2015, "region": "Sin dato", "socios": 0, "empleados": 291, "oficinas": 31, "B1g": 7504.339040000001, "P1": 12057.1, "Activos": 91545.7, "Patrimonio": 16001.2, "pib": 158623000.0, "color": "#f39c12"}, {"entidad": "CAPUAL", "año": 2016, "region": "Sin dato", "socios": 0, "empleados": 291, "oficinas": 31, "B1g": 8109.12512, "P1": 13028.8, "Activos": 87901.7, "Patrimonio": 19449.8, "pib": 168765000.0, "color": "#f39c12"}, {"entidad": "CAPUAL", "año": 2017, "region": "Sin dato", "socios": 0, "empleados": 291, "oficinas": 31, "B1g": 7008.224, "P1": 11260.0, "Activos": 95536.0, "Patrimonio": 19039.0, "pib": 179315000.0, "color": "#f39c12"}, {"entidad": "CAPUAL", "año": 2018, "region": "Sin dato", "socios": 0, "empleados": 291, "oficinas": 31, "B1g": 7146.3968, "P1": 11482.0, "Activos": 101306.0, "Patrimonio": 20123.0, "pib": 189435000.0, "color": "#f39c12"}, {"entidad": "CAPUAL", "año": 2019, "region": "Sin dato", "socios": 0, "empleados": 291, "oficinas": 31, "B1g": 7770.664, "P1": 12485.0, "Activos": 106697.0, "Patrimonio": 21199.0, "pib": 195548000.0, "color": "#f39c12"}, {"entidad": "CAPUAL", "año": 2020, "region": "Sin dato", "socios": 0, "empleados": 291, "oficinas": 31, "B1g": 7289.5488000000005, "P1": 11712.0, "Activos": 108301.0, "Patrimonio": 22393.0, "pib": 201307000.0, "color": "#f39c12"}, {"entidad": "CAPUAL", "año": 2021, "region": "Sin dato", "socios": 0, "empleados": 291, "oficinas": 31, "B1g": 7289.5488000000005, "P1": 11712.0, "Activos": 111602.0, "Patrimonio": 25353.0, "pib": 239556000.0, "color": "#f39c12"}, {"entidad": "CAPUAL", "año": 2022, "region": "Sin dato", "socios": 0, "empleados": 291, "oficinas": 31, "B1g": 7775.0208, "P1": 12492.0, "Activos": 95214.0, "Patrimonio": 25987.0, "pib": 262954000.0, "color": "#f39c12"}, {"entidad": "CAPUAL", "año": 2023, "region": "Sin dato", "socios": 0, "empleados": 291, "oficinas": 31, "B1g": 8861.7312, "P1": 14238.0, "Activos": 100368.0, "Patrimonio": 28864.0, "pib": 282097000.0, "color": "#f39c12"}, {"entidad": "CAPUAL", "año": 2024, "region": "Sin dato", "socios": 0, "empleados": 291, "oficinas": 31, "B1g": 9600.52, "P1": 15425.0, "Activos": 106851.0, "Patrimonio": 31435.0, "pib": 310681000.0, "color": "#f39c12"}, {"entidad": "CAPUAL", "año": 2025, "region": "Sin dato", "socios": 0, "empleados": 291, "oficinas": 31, "B1g": 10664.2016, "P1": 17134.0, "Activos": 113551.0, "Patrimonio": 33591.0, "pib": 339978000.0, "color": "#f39c12"}, {"entidad": "CONFIA Ltda.", "año": 2013, "region": "Valparaíso", "socios": 11097, "empleados": 139, "oficinas": 9, "B1g": 1970.70512, "P1": 3166.3, "Activos": 19787.8, "Patrimonio": 17582.0, "pib": 136003000.0, "color": "#d35400"}, {"entidad": "CONFIA Ltda.", "año": 2014, "region": "Valparaíso", "socios": 11097, "empleados": 139, "oficinas": 9, "B1g": 1941.32784, "P1": 3119.1, "Activos": 22495.3, "Patrimonio": 19900.4, "pib": 144706000.0, "color": "#d35400"}, {"entidad": "CONFIA Ltda.", "año": 2015, "region": "Valparaíso", "socios": 11097, "empleados": 139, "oficinas": 9, "B1g": 2037.6753600000002, "P1": 3273.9, "Activos": 27353.4, "Patrimonio": 23051.2, "pib": 158623000.0, "color": "#d35400"}, {"entidad": "CONFIA Ltda.", "año": 2016, "region": "Valparaíso", "socios": 11097, "empleados": 139, "oficinas": 9, "B1g": 2312.65168, "P1": 3715.7, "Activos": 30954.9, "Patrimonio": 26236.8, "pib": 168765000.0, "color": "#d35400"}, {"entidad": "CONFIA Ltda.", "año": 2017, "region": "Valparaíso", "socios": 11097, "empleados": 139, "oficinas": 9, "B1g": 2544.9936, "P1": 4089.0, "Activos": 34005.0, "Patrimonio": 26543.0, "pib": 179315000.0, "color": "#d35400"}, {"entidad": "CONFIA Ltda.", "año": 2018, "region": "Valparaíso", "socios": 11097, "empleados": 139, "oficinas": 9, "B1g": 2517.608, "P1": 4045.0, "Activos": 39059.0, "Patrimonio": 27097.0, "pib": 189435000.0, "color": "#d35400"}, {"entidad": "CONFIA Ltda.", "año": 2019, "region": "Valparaíso", "socios": 11097, "empleados": 139, "oficinas": 9, "B1g": 5195.1728, "P1": 8347.0, "Activos": 40357.0, "Patrimonio": 27770.0, "pib": 195548000.0, "color": "#d35400"}, {"entidad": "CONFIA Ltda.", "año": 2020, "region": "Valparaíso", "socios": 11097, "empleados": 139, "oficinas": 9, "B1g": 7214.8608, "P1": 11592.0, "Activos": 42356.0, "Patrimonio": 28911.0, "pib": 201307000.0, "color": "#d35400"}, {"entidad": "CONFIA Ltda.", "año": 2021, "region": "Valparaíso", "socios": 11097, "empleados": 139, "oficinas": 9, "B1g": 0.0, "P1": null, "Activos": null, "Patrimonio": null, "pib": 239556000.0, "color": "#d35400"}, {"entidad": "CONFIA Ltda.", "año": 2022, "region": "Valparaíso", "socios": 11097, "empleados": 139, "oficinas": 9, "B1g": 2223.8352, "P1": 3573.0, "Activos": 40571.0, "Patrimonio": 32934.0, "pib": 262954000.0, "color": "#d35400"}, {"entidad": "CONFIA Ltda.", "año": 2023, "region": "Valparaíso", "socios": 11097, "empleados": 139, "oficinas": 9, "B1g": 2614.7024, "P1": 4201.0, "Activos": 49796.0, "Patrimonio": 31082.0, "pib": 282097000.0, "color": "#d35400"}, {"entidad": "CONFIA Ltda.", "año": 2024, "region": "Valparaíso", "socios": 11097, "empleados": 139, "oficinas": 9, "B1g": 3690.832, "P1": 5930.0, "Activos": 58304.0, "Patrimonio": 31289.0, "pib": 310681000.0, "color": "#d35400"}, {"entidad": "CONFIA Ltda.", "año": 2025, "region": "Valparaíso", "socios": 11097, "empleados": 139, "oficinas": 9, "B1g": 4512.4, "P1": 7250.0, "Activos": 62695.0, "Patrimonio": 31905.0, "pib": 339978000.0, "color": "#d35400"}, {"entidad": "Coocretal", "año": 2013, "region": "Sin dato", "socios": 63095, "empleados": 64, "oficinas": 8, "B1g": 2377.44352, "P1": 3819.8, "Activos": 16980.1, "Patrimonio": 7794.1, "pib": 136003000.0, "color": "#8e44ad"}, {"entidad": "Coocretal", "año": 2014, "region": "Sin dato", "socios": 63095, "empleados": 64, "oficinas": 8, "B1g": 2125.8072, "P1": 3415.5, "Activos": 15653.3, "Patrimonio": 7501.2, "pib": 144706000.0, "color": "#8e44ad"}, {"entidad": "Coocretal", "año": 2015, "region": "Sin dato", "socios": 63095, "empleados": 64, "oficinas": 8, "B1g": 2039.23136, "P1": 3276.4, "Activos": 14763.8, "Patrimonio": 7272.6, "pib": 158623000.0, "color": "#8e44ad"}, {"entidad": "Coocretal", "año": 2016, "region": "Sin dato", "socios": 63095, "empleados": 64, "oficinas": 8, "B1g": 2109.43808, "P1": 3389.2, "Activos": 15715.4, "Patrimonio": 7590.4, "pib": 168765000.0, "color": "#8e44ad"}, {"entidad": "Coocretal", "año": 2017, "region": "Sin dato", "socios": 63095, "empleados": 64, "oficinas": 8, "B1g": 2152.2592, "P1": 3458.0, "Activos": 17021.0, "Patrimonio": 8617.0, "pib": 179315000.0, "color": "#8e44ad"}, {"entidad": "Coocretal", "año": 2018, "region": "Sin dato", "socios": 63095, "empleados": 64, "oficinas": 8, "B1g": 2002.8832, "P1": 3218.0, "Activos": 16872.0, "Patrimonio": 7764.0, "pib": 189435000.0, "color": "#8e44ad"}, {"entidad": "Coocretal", "año": 2019, "region": "Sin dato", "socios": 63095, "empleados": 64, "oficinas": 8, "B1g": 1745.832, "P1": 2805.0, "Activos": 16086.0, "Patrimonio": 7115.0, "pib": 195548000.0, "color": "#8e44ad"}, {"entidad": "Coocretal", "año": 2020, "region": "Sin dato", "socios": 63095, "empleados": 64, "oficinas": 8, "B1g": 1191.8960000000002, "P1": 1915.0, "Activos": 15029.0, "Patrimonio": 6480.0, "pib": 201307000.0, "color": "#8e44ad"}, {"entidad": "Coocretal", "año": 2021, "region": "Sin dato", "socios": 63095, "empleados": 64, "oficinas": 8, "B1g": 1361.8112, "P1": 2188.0, "Activos": 15707.0, "Patrimonio": 5660.0, "pib": 239556000.0, "color": "#8e44ad"}, {"entidad": "Coocretal", "año": 2022, "region": "Sin dato", "socios": 63095, "empleados": 64, "oficinas": 8, "B1g": 2068.2352, "P1": 3323.0, "Activos": 13697.0, "Patrimonio": 5263.0, "pib": 262954000.0, "color": "#8e44ad"}, {"entidad": "Coocretal", "año": 2023, "region": "Sin dato", "socios": 63095, "empleados": 64, "oficinas": 8, "B1g": 1612.6384, "P1": 2591.0, "Activos": 12177.0, "Patrimonio": 4422.0, "pib": 282097000.0, "color": "#8e44ad"}, {"entidad": "Coocretal", "año": 2024, "region": "Sin dato", "socios": 63095, "empleados": 64, "oficinas": 8, "B1g": 1445.2128, "P1": 2322.0, "Activos": 12762.0, "Patrimonio": 3624.0, "pib": 310681000.0, "color": "#8e44ad"}, {"entidad": "Coocretal", "año": 2025, "region": "Sin dato", "socios": 63095, "empleados": 64, "oficinas": 8, "B1g": 1421.5616, "P1": 2284.0, "Activos": 13254.0, "Patrimonio": 3328.0, "pib": 339978000.0, "color": "#8e44ad"}, {"entidad": "Coopeuch Ltda.", "año": 2013, "region": "R. Metropolitana", "socios": 1284980, "empleados": 2054, "oficinas": 90, "B1g": 126602.44624, "P1": 203410.1, "Activos": 1137043.2, "Patrimonio": 365114.1, "pib": 136003000.0, "color": "#1a56db"}, {"entidad": "Coopeuch Ltda.", "año": 2014, "region": "R. Metropolitana", "socios": 1284980, "empleados": 2054, "oficinas": 90, "B1g": 124177.01568000001, "P1": 199513.2, "Activos": 1143544.2, "Patrimonio": 382225.8, "pib": 144706000.0, "color": "#1a56db"}, {"entidad": "Coopeuch Ltda.", "año": 2015, "region": "R. Metropolitana", "socios": 1284980, "empleados": 2054, "oficinas": 90, "B1g": 128193.5496, "P1": 205966.5, "Activos": 1241436.8, "Patrimonio": 419116.1, "pib": 158623000.0, "color": "#1a56db"}, {"entidad": "Coopeuch Ltda.", "año": 2016, "region": "R. Metropolitana", "socios": 1284980, "empleados": 2054, "oficinas": 90, "B1g": 134300.91184000002, "P1": 215779.1, "Activos": 1371455.7, "Patrimonio": 451853.4, "pib": 168765000.0, "color": "#1a56db"}, {"entidad": "Coopeuch Ltda.", "año": 2017, "region": "R. Metropolitana", "socios": 1284980, "empleados": 2054, "oficinas": 90, "B1g": 121987.91040000001, "P1": 195996.0, "Activos": 1491468.0, "Patrimonio": 424947.0, "pib": 179315000.0, "color": "#1a56db"}, {"entidad": "Coopeuch Ltda.", "año": 2018, "region": "R. Metropolitana", "socios": 1284980, "empleados": 2054, "oficinas": 90, "B1g": 129091.984, "P1": 207410.0, "Activos": 1641723.0, "Patrimonio": 449473.0, "pib": 189435000.0, "color": "#1a56db"}, {"entidad": "Coopeuch Ltda.", "año": 2019, "region": "R. Metropolitana", "socios": 1284980, "empleados": 2054, "oficinas": 90, "B1g": 137474.4672, "P1": 220878.0, "Activos": 1834084.0, "Patrimonio": 481822.0, "pib": 195548000.0, "color": "#1a56db"}, {"entidad": "Coopeuch Ltda.", "año": 2020, "region": "R. Metropolitana", "socios": 1284980, "empleados": 2054, "oficinas": 90, "B1g": 133723.8848, "P1": 214852.0, "Activos": 2161912.0, "Patrimonio": 522707.0, "pib": 201307000.0, "color": "#1a56db"}, {"entidad": "Coopeuch Ltda.", "año": 2021, "region": "R. Metropolitana", "socios": 1284980, "empleados": 2054, "oficinas": 90, "B1g": 141732.30560000002, "P1": 227719.0, "Activos": 2439508.0, "Patrimonio": 556837.0, "pib": 239556000.0, "color": "#1a56db"}, {"entidad": "Coopeuch Ltda.", "año": 2022, "region": "R. Metropolitana", "socios": 1284980, "empleados": 2054, "oficinas": 90, "B1g": 178059.304, "P1": 286085.0, "Activos": 2746337.0, "Patrimonio": 640530.0, "pib": 262954000.0, "color": "#1a56db"}, {"entidad": "Coopeuch Ltda.", "año": 2023, "region": "R. Metropolitana", "socios": 1284980, "empleados": 2054, "oficinas": 90, "B1g": 171436.968, "P1": 275445.0, "Activos": 3132431.0, "Patrimonio": 662688.0, "pib": 282097000.0, "color": "#1a56db"}, {"entidad": "Coopeuch Ltda.", "año": 2024, "region": "R. Metropolitana", "socios": 1284980, "empleados": 2054, "oficinas": 90, "B1g": 204739.7248, "P1": 328952.0, "Activos": 3564043.0, "Patrimonio": 734697.0, "pib": 310681000.0, "color": "#1a56db"}, {"entidad": "Coopeuch Ltda.", "año": 2025, "region": "R. Metropolitana", "socios": 1284980, "empleados": 2054, "oficinas": 90, "B1g": 223747.82080000002, "P1": 359492.0, "Activos": 3939576.0, "Patrimonio": 776916.0, "pib": 339978000.0, "color": "#1a56db"}, {"entidad": "Detacoop Ltda.", "año": 2013, "region": "R. Metropolitana", "socios": 136191, "empleados": 278, "oficinas": 29, "B1g": 2797.19008, "P1": 4494.2, "Activos": 18776.5, "Patrimonio": 5657.7, "pib": 136003000.0, "color": "#16a085"}, {"entidad": "Detacoop Ltda.", "año": 2014, "region": "R. Metropolitana", "socios": 136191, "empleados": 278, "oficinas": 29, "B1g": 2194.33344, "P1": 3525.6, "Activos": 20238.5, "Patrimonio": 5059.0, "pib": 144706000.0, "color": "#16a085"}, {"entidad": "Detacoop Ltda.", "año": 2015, "region": "R. Metropolitana", "socios": 136191, "empleados": 278, "oficinas": 29, "B1g": 2312.5272, "P1": 3715.5, "Activos": 20690.7, "Patrimonio": 4608.7, "pib": 158623000.0, "color": "#16a085"}, {"entidad": "Detacoop Ltda.", "año": 2016, "region": "R. Metropolitana", "socios": 136191, "empleados": 278, "oficinas": 29, "B1g": 2965.9227200000005, "P1": 4765.3, "Activos": 23938.7, "Patrimonio": 4878.0, "pib": 168765000.0, "color": "#16a085"}, {"entidad": "Detacoop Ltda.", "año": 2017, "region": "R. Metropolitana", "socios": 136191, "empleados": 278, "oficinas": 29, "B1g": 2718.0208000000002, "P1": 4367.0, "Activos": 27223.0, "Patrimonio": 5870.0, "pib": 179315000.0, "color": "#16a085"}, {"entidad": "Detacoop Ltda.", "año": 2018, "region": "R. Metropolitana", "socios": 136191, "empleados": 278, "oficinas": 29, "B1g": 2868.0191999999997, "P1": 4608.0, "Activos": 31291.0, "Patrimonio": 5988.0, "pib": 189435000.0, "color": "#16a085"}, {"entidad": "Detacoop Ltda.", "año": 2019, "region": "R. Metropolitana", "socios": 136191, "empleados": 278, "oficinas": 29, "B1g": 3164.2816000000003, "P1": 5084.0, "Activos": 36779.0, "Patrimonio": 5871.0, "pib": 195548000.0, "color": "#16a085"}, {"entidad": "Detacoop Ltda.", "año": 2020, "region": "R. Metropolitana", "socios": 136191, "empleados": 278, "oficinas": 29, "B1g": 2957.0224, "P1": 4751.0, "Activos": 40304.0, "Patrimonio": 5150.0, "pib": 201307000.0, "color": "#16a085"}, {"entidad": "Detacoop Ltda.", "año": 2021, "region": "R. Metropolitana", "socios": 136191, "empleados": 278, "oficinas": 29, "B1g": 3255.7744000000002, "P1": 5231.0, "Activos": 45789.0, "Patrimonio": 5547.0, "pib": 239556000.0, "color": "#16a085"}, {"entidad": "Detacoop Ltda.", "año": 2022, "region": "R. Metropolitana", "socios": 136191, "empleados": 278, "oficinas": 29, "B1g": 4708.456, "P1": 7565.0, "Activos": 53208.0, "Patrimonio": 6541.0, "pib": 262954000.0, "color": "#16a085"}, {"entidad": "Detacoop Ltda.", "año": 2023, "region": "R. Metropolitana", "socios": 136191, "empleados": 278, "oficinas": 29, "B1g": 6120.6816, "P1": 9834.0, "Activos": 67098.0, "Patrimonio": 7651.0, "pib": 282097000.0, "color": "#16a085"}, {"entidad": "Detacoop Ltda.", "año": 2024, "region": "R. Metropolitana", "socios": 136191, "empleados": 278, "oficinas": 29, "B1g": 8218.792000000001, "P1": 13205.0, "Activos": 86017.0, "Patrimonio": 9820.0, "pib": 310681000.0, "color": "#16a085"}, {"entidad": "Detacoop Ltda.", "año": 2025, "region": "R. Metropolitana", "socios": 136191, "empleados": 278, "oficinas": 29, "B1g": 10140.140800000001, "P1": 16292.0, "Activos": 103358.0, "Patrimonio": 11885.0, "pib": 339978000.0, "color": "#16a085"}, {"entidad": "Oriencoop Ltda.", "año": 2013, "region": "Maule", "socios": 344574, "empleados": 336, "oficinas": 21, "B1g": 15110.751680000001, "P1": 24278.2, "Activos": 111346.5, "Patrimonio": 16605.9, "pib": 136003000.0, "color": "#e74c3c"}, {"entidad": "Oriencoop Ltda.", "año": 2014, "region": "Maule", "socios": 344574, "empleados": 336, "oficinas": 21, "B1g": 12824.48976, "P1": 20604.9, "Activos": 104564.2, "Patrimonio": 14428.0, "pib": 144706000.0, "color": "#e74c3c"}, {"entidad": "Oriencoop Ltda.", "año": 2015, "region": "Maule", "socios": 344574, "empleados": 336, "oficinas": 21, "B1g": 12257.67008, "P1": 19694.2, "Activos": 105201.1, "Patrimonio": 16614.6, "pib": 158623000.0, "color": "#e74c3c"}, {"entidad": "Oriencoop Ltda.", "año": 2016, "region": "Maule", "socios": 344574, "empleados": 336, "oficinas": 21, "B1g": 12658.24672, "P1": 20337.8, "Activos": 103107.8, "Patrimonio": 18499.9, "pib": 168765000.0, "color": "#e74c3c"}, {"entidad": "Oriencoop Ltda.", "año": 2017, "region": "Maule", "socios": 344574, "empleados": 336, "oficinas": 21, "B1g": 11012.7456, "P1": 17694.0, "Activos": 108383.0, "Patrimonio": 20640.0, "pib": 179315000.0, "color": "#e74c3c"}, {"entidad": "Oriencoop Ltda.", "año": 2018, "region": "Maule", "socios": 344574, "empleados": 336, "oficinas": 21, "B1g": 12014.8096, "P1": 19304.0, "Activos": 108511.0, "Patrimonio": 22181.0, "pib": 189435000.0, "color": "#e74c3c"}, {"entidad": "Oriencoop Ltda.", "año": 2019, "region": "Maule", "socios": 344574, "empleados": 336, "oficinas": 21, "B1g": 12044.062399999999, "P1": 19351.0, "Activos": 111623.0, "Patrimonio": 24681.0, "pib": 195548000.0, "color": "#e74c3c"}, {"entidad": "Oriencoop Ltda.", "año": 2020, "region": "Maule", "socios": 344574, "empleados": 336, "oficinas": 21, "B1g": 10239.7248, "P1": 16452.0, "Activos": 117739.0, "Patrimonio": 26411.0, "pib": 201307000.0, "color": "#e74c3c"}, {"entidad": "Oriencoop Ltda.", "año": 2021, "region": "Maule", "socios": 344574, "empleados": 336, "oficinas": 21, "B1g": 10232.878400000001, "P1": 16441.0, "Activos": 125923.0, "Patrimonio": 27980.0, "pib": 239556000.0, "color": "#e74c3c"}, {"entidad": "Oriencoop Ltda.", "año": 2022, "region": "Maule", "socios": 344574, "empleados": 336, "oficinas": 21, "B1g": 9415.0448, "P1": 15127.0, "Activos": 131009.0, "Patrimonio": 28386.0, "pib": 262954000.0, "color": "#e74c3c"}, {"entidad": "Oriencoop Ltda.", "año": 2023, "region": "Maule", "socios": 344574, "empleados": 336, "oficinas": 21, "B1g": 12471.6512, "P1": 20038.0, "Activos": 131053.0, "Patrimonio": 28155.0, "pib": 282097000.0, "color": "#e74c3c"}, {"entidad": "Oriencoop Ltda.", "año": 2024, "region": "Maule", "socios": 344574, "empleados": 336, "oficinas": 21, "B1g": 15545.0624, "P1": 24976.0, "Activos": 137067.0, "Patrimonio": 31991.0, "pib": 310681000.0, "color": "#e74c3c"}, {"entidad": "Oriencoop Ltda.", "año": 2025, "region": "Maule", "socios": 344574, "empleados": 336, "oficinas": 21, "B1g": 17020.1504, "P1": 27346.0, "Activos": 147185.0, "Patrimonio": 36311.0, "pib": 339978000.0, "color": "#e74c3c"}]}`);
+const CFG = {displayModeBar:true,responsive:true,displaylogo:false};
+const DK = {
+  paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',
+  font:{color:'#94a3b8',size:11},
+  xaxis:{gridcolor:'#2d3347',linecolor:'#2d3347',zerolinecolor:'#2d3347'},
+  yaxis:{gridcolor:'#2d3347',linecolor:'#2d3347',zerolinecolor:'#2d3347'},
+  legend:{bgcolor:'rgba(0,0,0,0)',font:{color:'#e2e8f0',size:11}},
+  margin:{t:10,b:40,l:60,r:20},
+};
+
+function fmm(v){ return v===null||v===undefined?'—':'$'+Math.round(v).toLocaleString('es-CL')+' MM'; }
+function fpct(v){ return v===null||v===undefined?'—':v.toFixed(4)+'%'; }
+function fn(v){ return v===null||v===undefined?'—':Number(v).toLocaleString('es-CL'); }
+
+// ── NAV ──────────────────────────────────────────────────────────────────────
+const renderedSections = {};
+function show(id, btn) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  if(!renderedSections[id]) { renderers[id](); renderedSections[id]=true; }
+}
+
+function buildYrBtns(containerId, years, activeFn, onChange) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = years.map(y=>`<button class="ybtn" onclick="(${onChange})(this,'${y}')" data-yr="${y}">${y}</button>`).join('');
+  const def = c.querySelector('[data-yr="'+activeFn()+'"]');
+  if(def) def.classList.add('active');
+}
+function setActive(container, val) {
+  document.querySelectorAll('#'+container+' .ybtn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.yr==val);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 1. OVERVIEW CMF
+// ═══════════════════════════════════════════════════════════════════════════
+let ovYear = null;
+function renderOverview() {
+  const agg = D.cmf_agg;
+  const años = agg['Año']||[];
+  const b1g  = agg['B1g (MM$)']||[];
+  const p1   = agg['P1 (MM$)']||[];
+  const p2   = agg['P2 (MM$)']||[];
+  const d1   = agg['D1 (MM$)']||[];
+  const b2g  = agg['B2g (MM$)']||[];
+  const ap   = agg['Aporte (%)']||[];
+  const n    = agg['N']||[];
+
+  const validYrs = años.filter((_,i)=>b1g[i]!==null);
+  if(!ovYear) ovYear = validYrs[validYrs.length-1];
+
+  buildYrBtns('ov-yr-btns', años, ()=>ovYear, 'updateOvKpis');
+  renderOvKpis();
+
+  Plotly.newPlot('ch-cmf-b1g',[
+    {x:años,y:b1g,type:'bar',name:'B1g (MM$)',marker:{color:'#3b82f6',opacity:.85},yaxis:'y',
+      text:n.map(v=>'N='+v),textposition:'outside',textfont:{color:'#94a3b8',size:10}},
+    {x:años,y:ap,type:'scatter',mode:'lines+markers',name:'Aporte PIB (%)',
+      marker:{color:'#10b981',size:7},line:{color:'#10b981',width:2},yaxis:'y2'}
+  ],{...DK,yaxis:{...DK.yaxis,title:'MM$'},
+      yaxis2:{title:'% PIB',overlaying:'y',side:'right',gridcolor:'transparent',tickformat:'.3f'},
+      legend:{...DK.legend,orientation:'h',x:0,y:1.18}},CFG);
+
+  Plotly.newPlot('ch-cmf-pila',[
+    {x:años,y:p2,type:'bar',name:'P2 Cons. Intermedio',marker:{color:'#ef4444',opacity:.8}},
+    {x:años,y:b1g,type:'bar',name:'B1g VAB bruto',marker:{color:'#3b82f6',opacity:.85}},
+  ],{...DK,barmode:'stack',yaxis:{...DK.yaxis,title:'MM$'},legend:{...DK.legend,orientation:'h',x:0,y:1.18}},CFG);
+
+  Plotly.newPlot('ch-cmf-d1',[
+    {x:años,y:d1,type:'bar',name:'D1 Remuneraciones',marker:{color:'#f59e0b',opacity:.85}},
+    {x:años,y:b2g,type:'bar',name:'B2g Excedente bruto',marker:{color:'#10b981',opacity:.8}},
+  ],{...DK,barmode:'group',yaxis:{...DK.yaxis,title:'MM$'},legend:{...DK.legend,orientation:'h',x:0,y:1.18}},CFG);
+
+  renderOvPie();
+}
+window.updateOvKpis = function(btn, yr) {
+  ovYear = parseInt(yr);
+  setActive('ov-yr-btns', yr);
+  renderOvKpis();
+  renderOvPie();
+};
+function renderOvKpis() {
+  const agg=D.cmf_agg, años=agg['Año']||[], b1g=agg['B1g (MM$)']||[];
+  const ap=agg['Aporte (%)']||[], p1=agg['P1 (MM$)']||[], d1=agg['D1 (MM$)']||[], n=agg['N']||[];
+  const li = años.indexOf(ovYear);
+  const kpis=[
+    {l:'B1g — VAB bruto '+ovYear, v:fmm(b1g[li]), s:'Valor Agregado Bruto · CMF', c:'blue'},
+    {l:'Aporte al PIB '+ovYear,  v:fpct(ap[li]),  s:'PIB ref. 2018 · BCCh',       c:'green'},
+    {l:'P1 Ingresos Oper. '+ovYear, v:fmm(p1[li]),s:'Output bruto',                c:'amber'},
+    {l:'D1 Remuneraciones '+ovYear, v:fmm(d1[li]),s:'Generación del ingreso',      c:'red'},
+    {l:'N Cooperativas '+ovYear,    v:n[li]??'—', s:'Con dato ese año',             c:'blue'},
+    {l:'B1g acumulado 2013–2025',   v:fmm(b1g.reduce((a,v)=>a+(v||0),0)), s:'Suma del período', c:'green'},
+  ];
+  document.getElementById('kpi-cmf').innerHTML = kpis.map(k=>`
+    <div class="kcard ${k.c}"><div class="klabel">${k.l}</div>
+    <div class="kvalue">${k.v}</div><div class="ksub">${k.s}</div></div>`).join('');
+}
+function renderOvPie() {
+  const labels=[], vals=[], colors=[];
+  for(const [ent,ed] of Object.entries(D.cmf_entities)) {
+    const i = ed.años.indexOf(ovYear);
+    if(i>=0 && ed.B1g[i]!==null && ed.B1g[i]>0) { labels.push(ent); vals.push(ed.B1g[i]); colors.push(ed.color); }
+  }
+  Plotly.react('ch-cmf-pie',[
+    {labels,values:vals,type:'pie',hole:.4,marker:{colors},textfont:{size:10},textinfo:'label+percent'}
+  ],{...DK,margin:{t:10,b:10,l:10,r:10}},CFG);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 2. ENTIDADES CMF
+// ═══════════════════════════════════════════════════════════════════════════
+let entSel = Object.keys(D.cmf_entities);
+let cmfTblYear = null;
+function renderEntidades() {
+  const div = document.getElementById('ent-selector');
+  div.innerHTML = '<span class="yr-lbl">Cooperativas:</span>' +
+    Object.keys(D.cmf_entities).map(e=>
+      `<button class="sbtn active" onclick="toggleEnt('${e}',this)">${e}</button>`).join('') +
+    '<button class="sbtn" onclick="selAll()">Todas</button><button class="sbtn" onclick="selNone()">Ninguna</button>';
+  renderEntCharts();
+
+  const allYrs = [...new Set(D.cmf_table_all.map(r=>r.año).filter(y=>y!==null))].sort();
+  const validYrs = allYrs.filter(y=>D.cmf_table_all.some(r=>r.año===y && r.B1g!==null));
+  if(!cmfTblYear) cmfTblYear = validYrs[validYrs.length-1];
+  const tblC = document.getElementById('cmf-tbl-yrs');
+  tblC.innerHTML = validYrs.map(y=>`<button class="ybtn${y===cmfTblYear?' active':''}" onclick="setCmfTblYear(this,${y})">${y}</button>`).join('');
+  renderCmfTable();
+}
+function toggleEnt(e,btn){
+  entSel=entSel.includes(e)?entSel.filter(x=>x!==e):[...entSel,e];
+  btn.classList.toggle('active');
+  renderEntCharts();
+}
+function selAll(){ entSel=Object.keys(D.cmf_entities); document.querySelectorAll('#ent-selector .sbtn').forEach(b=>b.classList.add('active')); renderEntCharts(); }
+function selNone(){ entSel=[]; document.querySelectorAll('#ent-selector .sbtn').forEach(b=>b.classList.remove('active')); renderEntCharts(); }
+function renderEntCharts(){
+  const tb=[], ta=[], tact=[], tp1=[];
+  for(const ent of entSel){
+    const ed=D.cmf_entities[ent]; if(!ed) continue;
+    const base={x:ed.años,mode:'lines+markers',name:ent,line:{color:ed.color,width:2},marker:{size:6,color:ed.color}};
+    tb.push({...base,y:ed.B1g});
+    ta.push({...base,y:ed.Aporte});
+    tact.push({...base,y:ed.Activos});
+    tp1.push({...base,y:ed.P1});
+  }
+  const lay=(t)=>{return{...DK,yaxis:{...DK.yaxis,title:t},legend:{...DK.legend,orientation:'h',x:0,y:1.18}}};
+  Plotly.react('ch-ent-b1g',tb.length?tb:[{x:[],y:[],type:'scatter'}],lay('MM$'),CFG);
+  Plotly.react('ch-ent-aporte',ta.length?ta:[{x:[],y:[],type:'scatter'}],{...lay('%'),yaxis:{...DK.yaxis,title:'%',tickformat:'.4f'}},CFG);
+  Plotly.react('ch-ent-activos',tact.length?tact:[{x:[],y:[],type:'scatter'}],lay('MM$'),CFG);
+  Plotly.react('ch-ent-p1',tp1.length?tp1:[{x:[],y:[],type:'scatter'}],lay('MM$'),CFG);
+}
+window.setCmfTblYear = function(btn,yr){
+  cmfTblYear=yr;
+  document.querySelectorAll('#cmf-tbl-yrs .ybtn').forEach(b=>b.classList.toggle('active',parseInt(b.textContent)===yr));
+  renderCmfTable();
+};
+function renderCmfTable(){
+  const rows = D.cmf_table_all.filter(r=>r.año===cmfTblYear).sort((a,b)=>(b.B1g||0)-(a.B1g||0));
+  if(!rows.length){ document.getElementById('cmf-table-wrap').innerHTML='<p style="color:#94a3b8;font-size:12px;padding:12px">Sin datos para este año.</p>'; return; }
+  const maxAct = Math.max(...rows.map(r=>r.Activos||0));
+  let h=`<table><thead><tr><th>Cooperativa</th><th>Región</th><th>Socios</th><th>Empleados</th>
+    <th>Oficinas</th><th>B1g (MM$)</th><th>Aporte PIB</th><th>Activos (MM$)</th></tr></thead><tbody>`;
+  for(const r of rows){
+    const pib = r.pib||310681000;
+    const ap = r.B1g!==null ? (r.B1g/pib*100).toFixed(4)+'%' : '—';
+    const pct = r.Activos&&maxAct?(r.Activos/maxAct*100).toFixed(0):0;
+    h+=`<tr><td><span class="dot" style="background:${r.color}"></span>${r.entidad}</td>
+      <td>${r.region}</td><td>${fn(r.socios)}</td><td>${fn(r.empleados)}</td><td>${fn(r.oficinas)}</td>
+      <td>${fmm(r.B1g)}</td><td>${ap}</td>
+      <td>${fmm(r.Activos)}<div class="pb"><div class="pf" style="width:${pct}%;background:${r.color}"></div></div></td></tr>`;
+  }
+  document.getElementById('cmf-table-wrap').innerHTML = h+'</tbody></table>';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 3. DAES AGREGADOS
+// ═══════════════════════════════════════════════════════════════════════════
+let daesYear = null;
+function renderDaes(){
+  const agg=D.daes_agg;
+  const años=agg['Año']||[], b1g=agg['B1g (MM$)']||[], p1=agg['P1 (MM$)']||[];
+  const d1=agg['D1 (MM$)']||[], ap=agg['Aporte (%)']||[], n=agg['N']||[];
+  const d1b1g=agg['D1/B1g']||[];
+
+  const validYrs=años.filter((_,i)=>b1g[i]!==null);
+  if(!daesYear) daesYear=validYrs[validYrs.length-1];
+
+  buildYrBtns('daes-yr-btns', años, ()=>daesYear, 'updateDaesKpis');
+  renderDaesKpis();
+
+  Plotly.newPlot('ch-daes-b1g',[
+    {x:años,y:b1g,type:'bar',name:'B1g (MM$)',marker:{color:'#8b5cf6',opacity:.85},yaxis:'y',
+      text:n.map(v=>'N='+v),textposition:'outside',textfont:{color:'#f59e0b',size:11}},
+    {x:años,y:n,type:'scatter',mode:'lines+markers',name:'N cooperativas',
+      marker:{color:'#f59e0b',size:8},line:{color:'#f59e0b',width:2,dash:'dot'},yaxis:'y2'}
+  ],{...DK,yaxis:{...DK.yaxis,title:'MM$'},
+      yaxis2:{title:'N cooperativas',overlaying:'y',side:'right',gridcolor:'transparent',dtick:2},
+      legend:{...DK.legend,orientation:'h',x:0,y:1.18}},CFG);
+
+  const topEnts=Object.entries(D.daes_entities);
+  const topAcum=topEnts.map(([e,ed])=>[e,ed.B1g.reduce((a,v)=>a+(v||0),0)]).sort((a,b)=>b[1]-a[1]);
+  Plotly.newPlot('ch-daes-top',[
+    {x:topAcum.map(([_,v])=>v),y:topAcum.map(([e])=>e),type:'bar',orientation:'h',
+      marker:{color:topAcum.map(([e])=>D.daes_entities[e]?.color||'#555')},
+      text:topAcum.map(([_,v])=>'$'+Math.round(v).toLocaleString('es-CL')),textposition:'outside'}
+  ],{...DK,margin:{t:10,b:40,l:240,r:100},xaxis:{...DK.xaxis,title:'B1g acumulado MM$'}},CFG);
+
+  Plotly.newPlot('ch-daes-aporte',[
+    {x:años,y:ap,type:'scatter',mode:'lines+markers',name:'Aporte PIB (%)',
+      fill:'tozeroy',fillcolor:'rgba(139,92,246,.15)',line:{color:'#8b5cf6',width:2},marker:{size:7,color:'#8b5cf6'}}
+  ],{...DK,yaxis:{...DK.yaxis,title:'%',tickformat:'.4f'}},CFG);
+
+  Plotly.newPlot('ch-daes-d1b1g',[
+    {x:años,y:d1b1g,type:'bar',name:'D1/B1g',
+      marker:{color:d1b1g.map(v=>v&&v>0.7?'#ef4444':v&&v>0.5?'#f59e0b':'#10b981')},
+      text:d1b1g.map(v=>v!=null?v.toFixed(2):'—'),textposition:'outside'},
+    {x:[años[0],años[años.length-1]],y:[0.5,0.5],type:'scatter',mode:'lines',name:'Ref 0.5',
+      line:{color:'#94a3b8',dash:'dot',width:1}}
+  ],{...DK,yaxis:{...DK.yaxis,title:'Ratio D1/B1g',tickformat:'.2f'},
+      legend:{...DK.legend,orientation:'h',x:0,y:1.18}},CFG);
+}
+window.updateDaesKpis = function(btn,yr){
+  daesYear=parseInt(yr);
+  setActive('daes-yr-btns',yr);
+  renderDaesKpis();
+};
+function renderDaesKpis(){
+  const agg=D.daes_agg,años=agg['Año']||[],b1g=agg['B1g (MM$)']||[];
+  const ap=agg['Aporte (%)']||[],p1=agg['P1 (MM$)']||[],n=agg['N']||[],d1b1g=agg['D1/B1g']||[];
+  const li=años.indexOf(daesYear);
+  const kpis=[
+    {l:'B1g '+daesYear,        v:fmm(b1g[li]),     s:'VAB bruto DAES',         c:'blue'},
+    {l:'Aporte PIB '+daesYear, v:fpct(ap[li]),     s:'PIB ref. 2018',           c:'green'},
+    {l:'N Cooperativas '+daesYear, v:n[li]??'—',   s:'Con dato ese año',        c:'amber'},
+    {l:'P1 Ingresos '+daesYear,v:fmm(p1[li]),     s:'Ingresos operacionales',  c:'red'},
+    {l:'D1/B1g '+daesYear,     v:d1b1g[li]!=null?d1b1g[li].toFixed(2):'—', s:'Intensidad laboral', c:'blue'},
+  ];
+  document.getElementById('kpi-daes').innerHTML=kpis.map(k=>`
+    <div class="kcard ${k.c}"><div class="klabel">${k.l}</div>
+    <div class="kvalue">${k.v}</div><div class="ksub">${k.s}</div></div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 4. PANEL DAES COMPLETO
+// ═══════════════════════════════════════════════════════════════════════════
+let panelYear = null;
+let panelSearch = '';
+function renderDaesPanel(){
+  const years = [...new Set(D.daes_panel.map(r=>r.Año).filter(y=>y!==null))].sort();
+  if(!panelYear) panelYear = years[years.length-1];
+  const c=document.getElementById('panel-yr-btns');
+  c.innerHTML=years.map(y=>`<button class="ybtn${y===panelYear?' active':''}" onclick="setPanelYear(this,${y})">${y}</button>`).join('');
+  renderPanelTable();
+}
+window.setPanelYear=function(btn,yr){
+  panelYear=yr;
+  document.querySelectorAll('#panel-yr-btns .ybtn').forEach(b=>b.classList.toggle('active',parseInt(b.textContent)===yr));
+  renderPanelTable();
+};
+window.filterPanel=function(){
+  panelSearch=document.getElementById('panel-search').value.toLowerCase();
+  renderPanelTable();
+};
+function renderPanelTable(){
+  let rows=D.daes_panel.filter(r=>r.Año===panelYear);
+  if(panelSearch) rows=rows.filter(r=>r.Entidad.toLowerCase().includes(panelSearch));
+  rows=rows.sort((a,b)=>(b.B1g||0)-(a.B1g||0));
+  if(!rows.length){
+    document.getElementById('panel-daes-wrap').innerHTML=`<p style="color:#94a3b8;font-size:12px;padding:12px">Sin datos para ${panelYear}.</p>`;
+    return;
+  }
+  const maxB1g=Math.max(...rows.map(r=>r.B1g||0));
+  let h=`<p style="font-size:12px;color:#94a3b8;margin-bottom:10px;">${rows.length} cooperativas · Año ${panelYear}</p>
+  <table><thead><tr>
+    <th>#</th><th>Cooperativa</th><th>RUT</th><th>P1 (MM$)</th><th>P2 (MM$)</th>
+    <th>B1g (MM$)</th><th>D1 (MM$)</th><th>B2g (MM$)</th><th>Activos (MM$)</th><th>Patrimonio (MM$)</th><th>Aporte (%)</th>
+  </tr></thead><tbody>`;
+  rows.forEach((r,i)=>{
+    const pct=maxB1g&&r.B1g?(r.B1g||0)/maxB1g*100:0;
+    h+=`<tr>
+      <td style="color:#94a3b8">${i+1}</td>
+      <td style="font-weight:500">${r.Entidad}</td>
+      <td style="font-size:11px;color:#94a3b8">${r.RUT}</td>
+      <td>${r.P1!==null?'$'+r.P1.toFixed(1):'—'}</td>
+      <td>${r.P2!==null?'$'+r.P2.toFixed(1):'—'}</td>
+      <td>
+        ${r.B1g!==null?'$'+r.B1g.toFixed(1):'—'}
+        <div class="pb"><div class="pf" style="width:${pct.toFixed(0)}%;background:#8b5cf6"></div></div>
+      </td>
+      <td>${r.D1!==null?'$'+r.D1.toFixed(1):'—'}</td>
+      <td>${r.B2g!==null?'$'+r.B2g.toFixed(1):'—'}</td>
+      <td>${r.Activos!==null?'$'+r.Activos.toFixed(1):'—'}</td>
+      <td>${r.Patrimonio!==null?'$'+r.Patrimonio.toFixed(1):'—'}</td>
+      <td>${r.Aporte!==null?r.Aporte.toFixed(6)+'%':'—'}</td>
+    </tr>`;
+  });
+  document.getElementById('panel-daes-wrap').innerHTML=h+'</tbody></table>';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 5. REGIÓN
+// ═══════════════════════════════════════════════════════════════════════════
+let regTblYear = null;
+function renderRegion(){
+  const rd=D.region;
+  Plotly.newPlot('ch-reg-n',[
+    {x:rd.n_cac,y:rd.regiones,type:'bar',orientation:'h',
+      marker:{color:rd.regiones.map(r=>r.includes('Metropolitana')?'#3b82f6':'#8b5cf6')},
+      text:rd.n_cac,textposition:'outside'}
+  ],{...DK,margin:{t:10,b:40,l:175,r:50},xaxis:{...DK.xaxis,title:'N° CAC'}},CFG);
+
+  Plotly.newPlot('ch-reg-socios',[
+    {x:rd.socios,y:rd.regiones,type:'bar',orientation:'h',
+      marker:{color:rd.regiones.map(r=>r.includes('Metropolitana')?'#10b981':'#06b6d4')},
+      text:rd.socios.map(v=>v?Number(v).toLocaleString('es-CL'):'0'),textposition:'outside'}
+  ],{...DK,margin:{t:10,b:40,l:175,r:100},xaxis:{...DK.xaxis,title:'Socios'}},CFG);
+
+  const allYrs=[...new Set(D.cmf_table_all.map(r=>r.año).filter(y=>y!==null))].sort();
+  const validYrs=allYrs.filter(y=>D.cmf_table_all.some(r=>r.año===y&&r.B1g!==null));
+  if(!regTblYear) regTblYear=validYrs[validYrs.length-1];
+  const rc=document.getElementById('reg-tbl-yrs');
+  rc.innerHTML=validYrs.map(y=>`<button class="ybtn${y===regTblYear?' active':''}" onclick="setRegYear(this,${y})">${y}</button>`).join('');
+  renderRegTable();
+}
+window.setRegYear=function(btn,yr){
+  regTblYear=yr;
+  document.querySelectorAll('#reg-tbl-yrs .ybtn').forEach(b=>b.classList.toggle('active',parseInt(b.textContent)===yr));
+  renderRegTable();
+};
+function renderRegTable(){
+  const rows=D.cmf_table_all.filter(r=>r.año===regTblYear).sort((a,b)=>(b.B1g||0)-(a.B1g||0));
+  let h=`<table><thead><tr><th>Cooperativa</th><th>Región sede</th><th>Socios</th>
+    <th>Empleados</th><th>Oficinas</th><th>B1g (MM$)</th><th>Aporte PIB</th></tr></thead><tbody>`;
+  for(const r of rows){
+    const pib=r.pib||310681000;
+    const ap=r.B1g!==null?(r.B1g/pib*100).toFixed(4)+'%':'—';
+    h+=`<tr><td><span class="dot" style="background:${r.color}"></span>${r.entidad}</td>
+      <td>${r.region}</td><td>${fn(r.socios)}</td><td>${fn(r.empleados)}</td><td>${fn(r.oficinas)}</td>
+      <td>${fmm(r.B1g)}</td><td>${ap}</td></tr>`;
+  }
+  document.getElementById('region-table-wrap').innerHTML=h+'</tbody></table>';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 6. SERIE HISTÓRICA CMF
+// ═══════════════════════════════════════════════════════════════════════════
+let histShareYear = null;
+function renderHistorico() {
+  const ents = D.cmf_entities;
+  const entKeys = Object.keys(ents);
+
+  // ── Gráfico 1: líneas históricas B1g por entidad ──────────────────────
+  const traces_b1g = entKeys.map(e => {
+    const ed = ents[e];
+    return {
+      x: ed.años, y: ed.B1g,
+      mode: 'lines+markers', name: e,
+      line: { color: ed.color, width: 2.2 },
+      marker: { size: 6, color: ed.color },
+      connectgaps: false,
+    };
+  });
+  Plotly.newPlot('ch-hist-b1g', traces_b1g, {
+    ...DK,
+    yaxis: { ...DK.yaxis, title: 'B1g (MM$)' },
+    legend: { ...DK.legend, orientation: 'h', x: 0, y: 1.14 },
+    margin: { t: 30, b: 50, l: 75, r: 20 },
+    shapes: [
+      // Línea vertical: inicio supervisión CMF (2019)
+      { type: 'line', x0: 2019, x1: 2019, y0: 0, y1: 1, yref: 'paper',
+         line: { color: '#f59e0b', width: 1.2, dash: 'dot' } },
+    ],
+    annotations: [
+      { x: 2019, y: 1, xref: 'x', yref: 'paper', text: 'Transición<br>CMF', showarrow: false,
+         font: { size: 10, color: '#f59e0b' }, xanchor: 'left', yanchor: 'top', bgcolor: 'rgba(0,0,0,0)' },
+    ],
+  }, CFG);
+
+  // ── Gráfico 2: share por entidad (año seleccionable) ──────────────────
+  const allYrs = [...new Set(
+    entKeys.flatMap(e => ents[e].años.filter((_,i) => ents[e].B1g[i] !== null))
+  )].sort();
+  if (!histShareYear) histShareYear = allYrs[allYrs.length - 1];
+  const sc = document.getElementById('hist-share-yrs');
+  sc.innerHTML = allYrs.map(y =>
+    `<button class="ybtn${y === histShareYear ? ' active' : ''}" onclick="setHistShareYear(this,${y})">${y}</button>`
+  ).join('');
+  renderHistShare();
+
+  // ── Gráfico 3: aporte PIB por entidad (líneas) ────────────────────────
+  const traces_pib = entKeys.map(e => {
+    const ed = ents[e];
+    return {
+      x: ed.años, y: ed.Aporte,
+      mode: 'lines+markers', name: e,
+      line: { color: ed.color, width: 2 },
+      marker: { size: 5, color: ed.color },
+      connectgaps: false,
+    };
+  });
+  Plotly.newPlot('ch-hist-pib', traces_pib, {
+    ...DK,
+    yaxis: { ...DK.yaxis, title: '% PIB', tickformat: '.4f' },
+    legend: { ...DK.legend, orientation: 'h', x: 0, y: 1.14 },
+    margin: { t: 30, b: 50, l: 75, r: 20 },
+  }, CFG);
+}
+
+window.setHistShareYear = function(btn, yr) {
+  histShareYear = yr;
+  document.querySelectorAll('#hist-share-yrs .ybtn').forEach(b =>
+    b.classList.toggle('active', parseInt(b.textContent) === yr));
+  renderHistShare();
+};
+
+function renderHistShare() {
+  const ents = D.cmf_entities;
+  const entKeys = Object.keys(ents);
+  // recoger B1g para el año seleccionado
+  const vals = entKeys.map(e => {
+    const ed = ents[e];
+    const i = ed.años.indexOf(histShareYear);
+    return i >= 0 ? (ed.B1g[i] || 0) : 0;
+  });
+  const total = vals.reduce((a, v) => a + v, 0);
+  const shares = vals.map(v => total > 0 ? (v / total * 100) : 0);
+  // ordenar descendente
+  const idx = shares.map((_, i) => i).sort((a, b) => shares[b] - shares[a]);
+  const labelsOrd = idx.map(i => entKeys[i]);
+  const sharesOrd = idx.map(i => shares[i]);
+  const colorsOrd = idx.map(i => D.cmf_entities[entKeys[i]].color);
+
+  Plotly.react('ch-hist-share', [{
+    x: sharesOrd,
+    y: labelsOrd,
+    type: 'bar',
+    orientation: 'h',
+    marker: { color: colorsOrd, opacity: 0.88 },
+    text: sharesOrd.map(v => v.toFixed(1) + '%'),
+    textposition: 'outside',
+    textfont: { color: '#e2e8f0', size: 11 },
+  }], {
+    ...DK,
+    xaxis: { ...DK.xaxis, title: 'Share B1g sectorial (%)', ticksuffix: '%' },
+    margin: { t: 10, b: 50, l: 160, r: 70 },
+  }, CFG);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 7. SUPUESTOS
+// ═══════════════════════════════════════════════════════════════════════════
+function renderSupuestos(){
+  Plotly.newPlot('ch-sankey',[{type:'sankey',orientation:'h',
+    node:{pad:18,thickness:22,
+      label:['EEFF DAES','EEFF CMF (IFRS)','P1 = Ingr. Operac.','P2 = α×P1 (α=0,3776)','B1g = P1−P2','D1 = |Remuner.|','B2g = B1g−D1','% Aporte PIB'],
+      color:['#3b82f6','#10b981','#f59e0b','#ef4444','#6366f1','#ec4899','#06b6d4','#8b5cf6']},
+    link:{source:[0,1,2,2,3,4,4,5],target:[2,2,3,4,4,5,6,7],
+      value:[50,200,60,190,60,90,130,130],
+      color:['rgba(59,130,246,.3)','rgba(16,185,129,.3)','rgba(239,68,68,.3)','rgba(99,102,241,.3)',
+             'rgba(99,102,241,.3)','rgba(236,72,153,.3)','rgba(6,182,212,.3)','rgba(139,92,246,.3)']}
+  }],{...DK,margin:{t:20,b:20,l:20,r:20}},CFG);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+const renderers = {
+  overview:   renderOverview,
+  entidades:  renderEntidades,
+  daes:       renderDaes,
+  daes_panel: renderDaesPanel,
+  region:     renderRegion,
+  historico:  renderHistorico,
+  supuestos:  renderSupuestos,
+};
+renderOverview();
+renderedSections['overview'] = true;
+</script>
+</body>
+</html>
