@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Dashboard Huella Social — Cooperativas de Ahorro y Crédito (CAC)
-v3.2  |  Proyecto Huella Social — Universidad de los Andes, 2026
+v4.0  |  Proyecto Huella Social — Universidad de los Andes, 2026
 Autores: Ignacio Ureta · Antonio Ruiz Tagle
 Supervisor: Sebastián Cea
 
@@ -66,6 +66,14 @@ df_daes_agg_raw["Año"] = pd.to_numeric(df_daes_agg_raw["Año"], errors="coerce"
 # FIX: filtrar por Año Y Aporte(%) notna — excluye fila de totales (Año=NaN, Aporte=0.195)
 df_daes_agg = df_daes_agg_raw[
     df_daes_agg_raw["Aporte (%)"].notna() & df_daes_agg_raw["Año"].notna()
+].sort_values("Año").reset_index(drop=True)
+
+# ── Agregado Total (CMF + DAES) ───────────────────────────────────────────────
+df_total_raw = parse_sheet(xls_hs, "🏦 Agregado Total", 2)
+numify(df_total_raw, ["P1 (MM$)","P2 (MM$)","B1g (MM$)","D1 (MM$)","B2g (MM$)","Rem (MM$)","D1/B1g","N","PIB Chile (MM$)","Aporte (%)"])
+df_total_raw["Año"] = pd.to_numeric(df_total_raw["Año"], errors="coerce")
+df_total_agg = df_total_raw[
+    df_total_raw["Año"].notna() & df_total_raw["Aporte (%)"].notna()
 ].sort_values("Año").reset_index(drop=True)
 
 # ── Feb 2026 ───────────────────────────────────────────────────────────────────
@@ -236,6 +244,12 @@ reg_json = {
     "socios":   [clean(x) for x in reg_df["Total_Socios"].tolist()],
 }
 
+# ── Agregado Total (CMF + DAES) ────────────────────────────────────────────────
+total_agg_data = {}
+for c in ["Año","N","P1 (MM$)","P2 (MM$)","B1g (MM$)","D1 (MM$)","B2g (MM$)","Rem (MM$)","D1/B1g","PIB Chile (MM$)","Aporte (%)"]:
+    if c in df_total_agg.columns:
+        total_agg_data[c] = [clean(x) for x in df_total_agg[c].tolist()]
+
 # ── CMF table (todos los años, para selector) ──────────────────────────────────
 pib_by_year = dict(zip(df_cmf_agg["Año"].tolist(), df_cmf_agg["PIB Chile (MM$)"].tolist()))
 
@@ -289,6 +303,7 @@ DATA_JSON = json.dumps({
     "cmf_entities":   cmf_entity_data,
     "cmf_agg":        cmf_agg_data,
     "daes_agg":       daes_agg_data,
+    "total_agg":      total_agg_data,
     "daes_entities":  daes_entity_data,
     "daes_panel":     daes_panel_records,
     "region":         reg_json,
@@ -394,6 +409,43 @@ HTML = f"""<!DOCTYPE html>
   input[type=text]::placeholder{{color:var(--muted);}}
   input[type=text]:focus{{border-color:var(--accent);}}
 
+  .nb.total-tab{{
+    background:linear-gradient(135deg,rgba(99,102,241,.18) 0%,rgba(16,185,129,.12) 100%);
+    border-bottom:2px solid transparent;
+    color:#a5b4fc;font-weight:700;
+  }}
+  .nb.total-tab.active{{
+    color:#a5b4fc;border-bottom-color:#a5b4fc;
+    background:linear-gradient(135deg,rgba(99,102,241,.28) 0%,rgba(16,185,129,.20) 100%);
+  }}
+  .total-hero{{
+    background:linear-gradient(135deg,#1e2d5a 0%,#162340 40%,#0f1117 100%);
+    border:1px solid rgba(99,102,241,.35);
+    border-radius:16px;padding:28px 32px;margin-bottom:24px;
+    position:relative;overflow:hidden;
+  }}
+  .total-hero::before{{
+    content:'';position:absolute;top:-60px;right:-60px;width:220px;height:220px;
+    background:radial-gradient(circle,rgba(99,102,241,.18) 0%,transparent 70%);
+    border-radius:50%;
+  }}
+  .total-hero h2{{font-size:20px;font-weight:800;color:#c7d2fe;margin-bottom:6px;}}
+  .total-hero p{{font-size:13px;color:#94a3b8;max-width:780px;line-height:1.6;}}
+  .total-kgrid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px;}}
+  .total-kcard{{
+    background:linear-gradient(135deg,var(--surface) 0%,var(--surface2) 100%);
+    border:1px solid rgba(99,102,241,.25);border-radius:var(--r);padding:20px;
+    position:relative;overflow:hidden;
+  }}
+  .total-kcard::before{{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+    background:linear-gradient(90deg,#6366f1,#10b981);}}
+  .total-kcard .klabel{{font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;}}
+  .total-kcard .kvalue{{font-size:28px;font-weight:800;line-height:1;
+    background:linear-gradient(135deg,#c7d2fe,#6ee7b7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}}
+  .total-kcard .ksub{{font-size:11px;color:var(--muted);margin-top:6px;}}
+  .comp-legend{{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:12px;align-items:center;}}
+  .comp-dot{{width:12px;height:12px;border-radius:3px;display:inline-block;margin-right:6px;flex-shrink:0;}}
+
   @media(max-width:768px){{
     main{{padding:14px;}}
     .cgrid.c2,.cgrid.c3{{grid-template-columns:1fr;}}
@@ -424,6 +476,8 @@ HTML = f"""<!DOCTYPE html>
   <button class="nb" onclick="show('daes_panel',this)">📋 Panel DAES</button>
   <button class="nb" onclick="show('region',this)">🗺️ Distribución Regional</button>
   <button class="nb" onclick="show('historico',this)">📈 Serie Histórica CMF</button>
+  <button class="nb total-tab" onclick="show('total',this)">🌐 Agregado Total</button>
+  <button class="nb" onclick="show('comparativo',this)">⚖️ CMF vs DAES</button>
   <button class="nb" onclick="show('supuestos',this)">📌 Supuestos</button>
 </nav>
 
@@ -553,6 +607,99 @@ HTML = f"""<!DOCTYPE html>
       <div class="csub">% sobre PIB Chile ref. 2018 · cada cooperativa</div>
       <div id="ch-hist-pib" style="height:310px"></div>
     </div>
+  </div>
+</div>
+
+<!-- AGREGADO TOTAL CMF + DAES -->
+<div class="section" id="total">
+  <div class="total-hero">
+    <h2>🌐 Cuenta Satélite — Sector CAC Completo (CMF + DAES)</h2>
+    <p>Estimación agregada del aporte al PIB de las Cooperativas de Ahorro y Crédito chilenas, combinando el segmento CMF (7 entidades supervisadas) y el segmento DAES (hasta 37 entidades no supervisadas). Período 2013–2025. Cifras en MM$ corrientes · PIB ref. 2018 (BCCh). Metodología ONU-TSE 2018.</p>
+  </div>
+  <div class="yr-row"><span class="yr-lbl">Año para KPIs:</span><span id="tot-yr-btns"></span></div>
+  <div class="total-kgrid" id="kpi-total"></div>
+  <div class="cgrid c2">
+    <div class="ccard" style="grid-column:1/-1">
+      <div class="ctitle">B1g Total (VAB bruto) y Aporte al PIB — CMF + DAES</div>
+      <div class="csub">N = cooperativas con dato ese año · Eje derecho: % aporte al PIB</div>
+      <div id="ch-tot-b1g" style="height:310px"></div>
+    </div>
+  </div>
+  <div class="cgrid c2" style="margin-top:16px">
+    <div class="ccard">
+      <div class="ctitle">Descomposición P1 → P2 → B1g</div>
+      <div class="csub">Consumo intermedio estimado (α=0,3776) y valor agregado bruto</div>
+      <div id="ch-tot-pila" style="height:280px"></div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">D1 vs B2g — Generación del ingreso</div>
+      <div class="csub">Remuneraciones vs excedente de explotación bruto · sector completo</div>
+      <div id="ch-tot-d1" style="height:280px"></div>
+    </div>
+  </div>
+  <div class="cgrid c2" style="margin-top:16px">
+    <div class="ccard">
+      <div class="ctitle">Aporte al PIB — Serie histórica</div>
+      <div class="csub">% sobre PIB Chile ref. 2018 · eje derecho: N cooperativas</div>
+      <div id="ch-tot-aporte" style="height:260px"></div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">Intensidad laboral D1/B1g</div>
+      <div class="csub">Proporción del VAB destinada a remuneraciones · sector completo</div>
+      <div id="ch-tot-d1b1g" style="height:260px"></div>
+    </div>
+  </div>
+  <div class="ccard" style="margin-top:16px">
+    <div class="ctitle">Tabla resumen por año</div>
+    <div class="tw" id="tot-table-wrap" style="margin-top:12px"></div>
+  </div>
+  <div class="ibox" style="margin-top:14px">💡 <b>Nota metodológica:</b> El agregado total suma ambos segmentos para obtener una estimación del sector CAC completo. Las CAC CMF contribuyen con la mayor parte del VAB dada su escala. El N varía por año: el panel no es balanceado en el segmento DAES.</div>
+</div>
+
+<!-- COMPARATIVO CMF vs DAES -->
+<div class="section" id="comparativo">
+  <div class="stitle">⚖️ CMF vs DAES — Análisis Comparativo</div>
+  <div class="ssub">Comparación de variables clave entre el segmento supervisado CMF y el segmento DAES · cifras en MM$ corrientes</div>
+  <div class="wbox">⚠️ <b>Interpretación cuidadosa:</b> ambos segmentos tienen universos y períodos distintos. El segmento CMF tiene N estable (7); el DAES tiene N variable (2–37). Las diferencias de nivel reflejan también diferencias de cobertura.</div>
+  <div class="cgrid c2">
+    <div class="ccard" style="grid-column:1/-1">
+      <div class="ctitle">B1g (VAB bruto) — CMF vs DAES</div>
+      <div class="csub">Comparación directa de valores agregados por segmento</div>
+      <div class="comp-legend">
+        <span><span class="comp-dot" style="background:#3b82f6"></span>Segmento CMF</span>
+        <span><span class="comp-dot" style="background:#8b5cf6"></span>Segmento DAES</span>
+      </div>
+      <div id="ch-comp-b1g" style="height:300px"></div>
+    </div>
+  </div>
+  <div class="cgrid c2" style="margin-top:16px">
+    <div class="ccard">
+      <div class="ctitle">Aporte al PIB — CMF vs DAES</div>
+      <div class="csub">% sobre PIB Chile ref. 2018</div>
+      <div id="ch-comp-aporte" style="height:260px"></div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">P1 Ingresos operacionales — CMF vs DAES</div>
+      <div class="csub">Output bruto estimado · MM$</div>
+      <div id="ch-comp-p1" style="height:260px"></div>
+    </div>
+  </div>
+  <div class="cgrid c2" style="margin-top:16px">
+    <div class="ccard">
+      <div class="ctitle">D1 Remuneraciones — CMF vs DAES</div>
+      <div class="csub">Generación del ingreso · MM$</div>
+      <div id="ch-comp-d1" style="height:260px"></div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">Intensidad laboral D1/B1g — CMF vs DAES</div>
+      <div class="csub">Proporción del VAB destinada a remuneraciones</div>
+      <div id="ch-comp-d1b1g" style="height:260px"></div>
+    </div>
+  </div>
+  <div class="ccard" style="margin-top:16px">
+    <div class="ctitle">B1g per cápita (por cooperativa) — CMF vs DAES</div>
+    <div class="csub">B1g ÷ N · VAB promedio por cooperativa · permite comparación ajustada por tamaño de muestra</div>
+    <div id="ch-comp-percap" style="height:260px"></div>
   </div>
 </div>
 
@@ -1058,15 +1205,218 @@ function renderSupuestos(){{
   }}],{{...DK,margin:{{t:20,b:20,l:20,r:20}}}},CFG);
 }}
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 8. AGREGADO TOTAL
+// ═══════════════════════════════════════════════════════════════════════════
+let totYear = null;
+function renderTotal() {{
+  const agg = D.total_agg;
+  const años = agg['Año']||[], b1g = agg['B1g (MM$)']||[], p1 = agg['P1 (MM$)']||[];
+  const p2 = agg['P2 (MM$)']||[], d1 = agg['D1 (MM$)']||[], b2g = agg['B2g (MM$)']||[];
+  const ap = agg['Aporte (%)']||[], n = agg['N']||[], d1b1g = agg['D1/B1g']||[];
+
+  const validYrs = años.filter((_,i) => b1g[i] !== null);
+  if (!totYear) totYear = validYrs[validYrs.length - 1];
+  buildYrBtns('tot-yr-btns', años, () => totYear, 'updateTotKpis');
+  renderTotKpis();
+
+  // Gráfico principal: B1g barras + aporte línea
+  Plotly.newPlot('ch-tot-b1g', [
+    {{x:años, y:b1g, type:'bar', name:'B1g Total (MM$)',
+      marker:{{color:'#6366f1', opacity:.88}}, yaxis:'y',
+      text:n.map(v=>'N='+v), textposition:'outside', textfont:{{color:'#94a3b8',size:10}}}},
+    {{x:años, y:ap, type:'scatter', mode:'lines+markers', name:'Aporte PIB (%)',
+      marker:{{color:'#10b981', size:8, symbol:'diamond'}}, line:{{color:'#10b981', width:2.5}}, yaxis:'y2'}},
+  ], {{...DK,
+    yaxis:{{...DK.yaxis, title:'B1g (MM$)'}},
+    yaxis2:{{title:'% PIB', overlaying:'y', side:'right', gridcolor:'transparent', tickformat:'.3f'}},
+    legend:{{...DK.legend, orientation:'h', x:0, y:1.12}},
+    shapes:[{{type:'line',x0:2019,x1:2019,y0:0,y1:1,yref:'paper',line:{{color:'#f59e0b',width:1.2,dash:'dot'}}}}],
+    annotations:[{{x:2019,y:0.98,xref:'x',yref:'paper',text:'Inicio<br>CMF',showarrow:false,
+      font:{{size:9,color:'#f59e0b'}},xanchor:'left',bgcolor:'rgba(0,0,0,0)'}}],
+    margin:{{t:30,b:40,l:70,r:70}},
+  }}, CFG);
+
+  // Pila P2 + B1g
+  Plotly.newPlot('ch-tot-pila', [
+    {{x:años, y:p2, type:'bar', name:'P2 Cons. Intermedio', marker:{{color:'#ef4444', opacity:.8}}}},
+    {{x:años, y:b1g, type:'bar', name:'B1g VAB bruto', marker:{{color:'#6366f1', opacity:.88}}}},
+  ], {{...DK, barmode:'stack', yaxis:{{...DK.yaxis, title:'MM$'}},
+    legend:{{...DK.legend, orientation:'h', x:0, y:1.18}}}}, CFG);
+
+  // D1 vs B2g
+  Plotly.newPlot('ch-tot-d1', [
+    {{x:años, y:d1, type:'bar', name:'D1 Remuneraciones', marker:{{color:'#f59e0b', opacity:.88}}}},
+    {{x:años, y:b2g, type:'bar', name:'B2g Excedente bruto', marker:{{color:'#10b981', opacity:.8}}}},
+  ], {{...DK, barmode:'group', yaxis:{{...DK.yaxis, title:'MM$'}},
+    legend:{{...DK.legend, orientation:'h', x:0, y:1.18}}}}, CFG);
+
+  // Aporte PIB con N eje derecho
+  Plotly.newPlot('ch-tot-aporte', [
+    {{x:años, y:ap, type:'scatter', mode:'lines+markers', name:'Aporte PIB (%)',
+      fill:'tozeroy', fillcolor:'rgba(99,102,241,.12)', line:{{color:'#6366f1', width:2.5}},
+      marker:{{size:8, color:'#6366f1', symbol:'diamond'}}, yaxis:'y'}},
+    {{x:años, y:n, type:'scatter', mode:'lines+markers', name:'N cooperativas',
+      line:{{color:'#f59e0b', width:1.5, dash:'dot'}}, marker:{{size:6, color:'#f59e0b'}}, yaxis:'y2'}},
+  ], {{...DK,
+    yaxis:{{...DK.yaxis, title:'% Aporte PIB', tickformat:'.4f'}},
+    yaxis2:{{title:'N', overlaying:'y', side:'right', gridcolor:'transparent', dtick:5}},
+    legend:{{...DK.legend, orientation:'h', x:0, y:1.18}},
+    margin:{{t:30,b:40,l:70,r:60}},
+  }}, CFG);
+
+  // D1/B1g ratio
+  Plotly.newPlot('ch-tot-d1b1g', [
+    {{x:años, y:d1b1g, type:'bar', name:'D1/B1g',
+      marker:{{color:d1b1g.map(v=>v&&v>0.7?'#ef4444':v&&v>0.5?'#f59e0b':'#10b981')}},
+      text:d1b1g.map(v=>v!=null?v.toFixed(3):'—'), textposition:'outside'}},
+    {{x:[años[0],años[años.length-1]], y:[0.5,0.5], type:'scatter', mode:'lines',
+      name:'Ref. 0.5', line:{{color:'#94a3b8', dash:'dot', width:1}}}},
+  ], {{...DK, yaxis:{{...DK.yaxis, title:'Ratio D1/B1g', tickformat:'.2f'}},
+    legend:{{...DK.legend, orientation:'h', x:0, y:1.18}}}}, CFG);
+
+  // Tabla resumen
+  let h = `<table><thead><tr>
+    <th>Año</th><th>N</th><th>P1 (MM$)</th><th>P2 (MM$)</th><th>B1g (MM$)</th>
+    <th>D1 (MM$)</th><th>B2g (MM$)</th><th>D1/B1g</th><th>PIB Chile (MM$)</th><th>Aporte (%)</th>
+  </tr></thead><tbody>`;
+  for (let i = 0; i < años.length; i++) {{
+    const isSelected = años[i] === totYear;
+    h += `<tr style="${{isSelected?'background:rgba(99,102,241,.12);':''}}">`+
+      `<td style="font-weight:${{isSelected?700:400}};color:${{isSelected?'#c7d2fe':'inherit'}}">${{años[i]}}</td>`+
+      `<td>${{n[i]??'—'}}</td>`+
+      `<td>${{agg['P1 (MM$)'][i]!==null?'$'+Math.round(agg['P1 (MM$)'][i]).toLocaleString('es-CL'):'—'}}</td>`+
+      `<td>${{agg['P2 (MM$)'][i]!==null?'$'+Math.round(agg['P2 (MM$)'][i]).toLocaleString('es-CL'):'—'}}</td>`+
+      `<td style="font-weight:600">${{b1g[i]!==null?'$'+Math.round(b1g[i]).toLocaleString('es-CL'):'—'}}</td>`+
+      `<td>${{d1[i]!==null?'$'+Math.round(d1[i]).toLocaleString('es-CL'):'—'}}</td>`+
+      `<td>${{b2g[i]!==null?'$'+Math.round(b2g[i]).toLocaleString('es-CL'):'—'}}</td>`+
+      `<td>${{d1b1g[i]!=null?d1b1g[i].toFixed(4):'—'}}</td>`+
+      `<td>${{agg['PIB Chile (MM$)'][i]!==null?'$'+Math.round(agg['PIB Chile (MM$)'][i]).toLocaleString('es-CL'):'—'}}</td>`+
+      `<td style="font-weight:600;color:#10b981">${{ap[i]!=null?ap[i].toFixed(6)+'%':'—'}}</td>`+
+      `</tr>`;
+  }}
+  document.getElementById('tot-table-wrap').innerHTML = h + '</tbody></table>';
+}}
+window.updateTotKpis = function(btn, yr) {{
+  totYear = parseInt(yr);
+  setActive('tot-yr-btns', yr);
+  renderTotKpis();
+}};
+function renderTotKpis() {{
+  const agg=D.total_agg, años=agg['Año']||[], b1g=agg['B1g (MM$)']||[];
+  const ap=agg['Aporte (%)']||[], p1=agg['P1 (MM$)']||[], d1=agg['D1 (MM$)']||[], n=agg['N']||[];
+  const li = años.indexOf(totYear);
+  const b1gAcum = b1g.reduce((a,v)=>a+(v||0),0);
+  const kpis = [
+    {{l:'B1g Total '+totYear,    v:fmm(b1g[li]),           s:'VAB bruto CMF + DAES',    c:'indigo'}},
+    {{l:'Aporte al PIB '+totYear,v:fpct(ap[li]),            s:'PIB ref. 2018 · BCCh',    c:'green'}},
+    {{l:'P1 Ingresos '+totYear,  v:fmm(p1[li]),             s:'Output bruto total',      c:'amber'}},
+    {{l:'D1 Remuner. '+totYear,  v:fmm(d1[li]),             s:'Masa salarial sectorial', c:'red'}},
+    {{l:'N Cooperativas '+totYear,v:n[li]??'—',             s:'CMF + DAES con dato',     c:'blue'}},
+    {{l:'B1g acumul. 2013–2025', v:fmm(b1gAcum),           s:'Suma del período completo',c:'green'}},
+  ];
+  document.getElementById('kpi-total').innerHTML = kpis.map(k=>`
+    <div class="total-kcard">
+      <div class="klabel">${{k.l}}</div>
+      <div class="kvalue">${{k.v}}</div>
+      <div class="ksub">${{k.s}}</div>
+    </div>`).join('');
+}}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 9. COMPARATIVO CMF vs DAES
+// ═══════════════════════════════════════════════════════════════════════════
+function renderComparativo() {{
+  const cmf  = D.cmf_agg;
+  const daes = D.daes_agg;
+  const cmfAños  = cmf['Año']||[];
+  const daesAños = daes['Año']||[];
+
+  // Helper: alinear dos series por año
+  function seriesFor(agg, col) {{
+    return (agg['Año']||[]).map((_,i) => agg[col][i]);
+  }}
+
+  const cmfB1g   = seriesFor(cmf,  'B1g (MM$)');
+  const daesB1g  = seriesFor(daes, 'B1g (MM$)');
+  const cmfAp    = seriesFor(cmf,  'Aporte (%)');
+  const daesAp   = seriesFor(daes, 'Aporte (%)');
+  const cmfP1    = seriesFor(cmf,  'P1 (MM$)');
+  const daesP1   = seriesFor(daes, 'P1 (MM$)');
+  const cmfD1    = seriesFor(cmf,  'D1 (MM$)');
+  const daesD1   = seriesFor(daes, 'D1 (MM$)');
+  const cmfRatio = seriesFor(cmf,  'Aporte (%)').map((_,i)=>
+    cmf['D1 (MM$)'][i]!=null && cmf['B1g (MM$)'][i]!=null && cmf['B1g (MM$)'][i]>0
+    ? cmf['D1 (MM$)'][i]/cmf['B1g (MM$)'][i] : null);
+  const daesRatio = seriesFor(daes,'Aporte (%)').map((_,i)=>
+    daes['D1 (MM$)'][i]!=null && daes['B1g (MM$)'][i]!=null && daes['B1g (MM$)'][i]>0
+    ? daes['D1 (MM$)'][i]/daes['B1g (MM$)'][i] : null);
+
+  const cmfN  = cmf['N']||[];
+  const daesN = daes['N']||[];
+  const cmfPerCap  = cmfB1g.map((v,i)  => v!=null && cmfN[i]  ? v/cmfN[i]  : null);
+  const daesPerCap = daesB1g.map((v,i) => v!=null && daesN[i] ? v/daesN[i] : null);
+
+  const baseCmf  = {{mode:'lines+markers', line:{{color:'#3b82f6',width:2.2}}, marker:{{size:7,color:'#3b82f6'}}}};
+  const baseD    = {{mode:'lines+markers', line:{{color:'#8b5cf6',width:2.2}}, marker:{{size:7,color:'#8b5cf6'}}}};
+
+  // B1g comparativo (barras agrupadas)
+  Plotly.newPlot('ch-comp-b1g', [
+    {{x:cmfAños,  y:cmfB1g,  type:'bar', name:'CMF',  marker:{{color:'#3b82f6',opacity:.85}}}},
+    {{x:daesAños, y:daesB1g, type:'bar', name:'DAES', marker:{{color:'#8b5cf6',opacity:.85}}}},
+  ], {{...DK, barmode:'group', yaxis:{{...DK.yaxis,title:'B1g (MM$)'}},
+    legend:{{...DK.legend,orientation:'h',x:0,y:1.1}},margin:{{t:30,b:40,l:70,r:20}}}}, CFG);
+
+  // Aporte PIB (líneas)
+  Plotly.newPlot('ch-comp-aporte', [
+    {{x:cmfAños,  y:cmfAp,  ...baseCmf, name:'CMF',  fill:'tozeroy', fillcolor:'rgba(59,130,246,.10)'}},
+    {{x:daesAños, y:daesAp, ...baseD,   name:'DAES', fill:'tozeroy', fillcolor:'rgba(139,92,246,.10)'}},
+  ], {{...DK, yaxis:{{...DK.yaxis,title:'% PIB',tickformat:'.4f'}},
+    legend:{{...DK.legend,orientation:'h',x:0,y:1.18}}}}, CFG);
+
+  // P1
+  Plotly.newPlot('ch-comp-p1', [
+    {{x:cmfAños,  y:cmfP1,  ...baseCmf, name:'CMF'}},
+    {{x:daesAños, y:daesP1, ...baseD,   name:'DAES'}},
+  ], {{...DK, yaxis:{{...DK.yaxis,title:'P1 (MM$)'}},
+    legend:{{...DK.legend,orientation:'h',x:0,y:1.18}}}}, CFG);
+
+  // D1
+  Plotly.newPlot('ch-comp-d1', [
+    {{x:cmfAños,  y:cmfD1,  type:'bar', name:'CMF',  marker:{{color:'#3b82f6',opacity:.85}}}},
+    {{x:daesAños, y:daesD1, type:'bar', name:'DAES', marker:{{color:'#8b5cf6',opacity:.85}}}},
+  ], {{...DK, barmode:'group', yaxis:{{...DK.yaxis,title:'D1 (MM$)'}},
+    legend:{{...DK.legend,orientation:'h',x:0,y:1.18}}}}, CFG);
+
+  // D1/B1g ratio
+  const daesD1B1g = (daes['D1/B1g']||[]);
+  Plotly.newPlot('ch-comp-d1b1g', [
+    {{x:cmfAños,  y:cmfRatio,  ...baseCmf, name:'CMF'}},
+    {{x:daesAños, y:daesD1B1g, ...baseD,   name:'DAES'}},
+    {{x:[cmfAños[0],cmfAños[cmfAños.length-1]], y:[0.5,0.5], type:'scatter',
+      mode:'lines', name:'Ref. 0.5', line:{{color:'#94a3b8',dash:'dot',width:1}}}},
+  ], {{...DK, yaxis:{{...DK.yaxis,title:'D1/B1g',tickformat:'.3f'}},
+    legend:{{...DK.legend,orientation:'h',x:0,y:1.18}}}}, CFG);
+
+  // Per cápita
+  Plotly.newPlot('ch-comp-percap', [
+    {{x:cmfAños,  y:cmfPerCap,  ...baseCmf, name:'CMF (B1g÷N)'}},
+    {{x:daesAños, y:daesPerCap, ...baseD,   name:'DAES (B1g÷N)'}},
+  ], {{...DK, yaxis:{{...DK.yaxis,title:'MM$ por cooperativa'}},
+    legend:{{...DK.legend,orientation:'h',x:0,y:1.18}},margin:{{t:30,b:40,l:80,r:20}}}}, CFG);
+}}
+
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 const renderers = {{
-  overview:   renderOverview,
-  entidades:  renderEntidades,
-  daes:       renderDaes,
-  daes_panel: renderDaesPanel,
-  region:     renderRegion,
-  historico:  renderHistorico,
-  supuestos:  renderSupuestos,
+  overview:    renderOverview,
+  entidades:   renderEntidades,
+  daes:        renderDaes,
+  daes_panel:  renderDaesPanel,
+  region:      renderRegion,
+  historico:   renderHistorico,
+  total:       renderTotal,
+  comparativo: renderComparativo,
+  supuestos:   renderSupuestos,
 }};
 renderOverview();
 renderedSections['overview'] = true;
