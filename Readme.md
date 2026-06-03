@@ -2,7 +2,7 @@
 
 Dashboard interactivo que estima el aporte de las Cooperativas de Ahorro y Crédito (CAC) al PIB chileno, construido como parte de una memoria de título en Ingeniería Civil Industrial en la Universidad de los Andes (2026).
 
-**Autores:** Ignacio Ureta · Antonio Ruiz Tagle · **Supervisor:** Sebastián Cea
+**Autores:** Ignacio Ureta · Antonio Ruiz Tagle · **Supervisores:** Sebastián Cea · Joaquín Fernández
 
 ---
 
