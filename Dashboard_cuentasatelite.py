@@ -732,7 +732,7 @@ HTML = f"""<!DOCTYPE html>
 <div class="section" id="comparativo">
   <div class="stitle">⚖️ CMF vs DAES — Análisis Comparativo</div>
   <div class="ssub">Comparación de variables clave entre el segmento supervisado CMF y el segmento DAES · cifras en MM$ corrientes</div>
-  <div class="wbox">⚠️ <b>Interpretación cuidadosa:</b> ambos segmentos tienen universos y períodos distintos. El segmento CMF tiene N estable (7); el DAES tiene N variable (2–35). Las diferencias de nivel reflejan también diferencias de cobertura.</div>
+  <div class="wbox">⚠️ <b>Interpretación cuidadosa:</b> ambos segmentos tienen universos y períodos distintos. El segmento CMF tiene N estable (7); el DAES tiene N variable (2–37). Las diferencias de nivel reflejan también diferencias de cobertura.</div>
   <div class="cgrid c2">
     <div class="ccard" style="grid-column:1/-1">
       <div class="ctitle">B1g (VAB bruto) — CMF vs DAES</div>
@@ -1694,17 +1694,27 @@ function renderEstadisticaCharts() {{
   ], {{...DK, xaxis:{{...DK.xaxis,type:'category'}}, yaxis:{{...DK.yaxis,title:'CV (adimensional)'}},
     margin:{{t:10,b:40,l:60,r:20}}}}, CFG);
 
-  // Rango Min–Max
-  const baseArr = vars.map(() => 0);
+  // Rango Min–Max (estilo dumbbell: línea vertical entre Mín y Máx, marcadores en extremos)
+  const rangeShapes = vars.map((v,i) => {{
+    if (minVals[i]==null || maxVals[i]==null) return null;
+    return {{
+      type:'line', x0:v, x1:v, y0:minVals[i], y1:maxVals[i],
+      line:{{color:'#8b5cf6', width:3}}
+    }};
+  }}).filter(Boolean);
   Plotly.newPlot('ch-est-range', [
-    {{x:vars, y:maxVals, type:'bar', name:'Máx', marker:{{color:'#6366f1',opacity:.7}}}},
-    {{x:vars, y:mediaVals, type:'scatter', mode:'markers', name:'Media',
-      marker:{{color:'#f59e0b',size:10,symbol:'diamond'}}}},
-    {{x:vars, y:medianaVals, type:'scatter', mode:'markers', name:'Mediana',
-      marker:{{color:'#10b981',size:8,symbol:'circle'}}}},
-    {{x:vars, y:minVals, type:'bar', name:'Mín', marker:{{color:'#8b5cf6',opacity:.5}}}},
-  ], {{...DK, barmode:'overlay', xaxis:{{...DK.xaxis,type:'category'}}, yaxis:{{...DK.yaxis,title:'MM$'}},
-    legend:{{...DK.legend,orientation:'h',x:0,y:1.12}},
+    {{x:vars, y:maxVals, type:'scatter', mode:'markers+text', name:'Máx',
+      marker:{{color:'#8b5cf6', size:12, symbol:'circle'}},
+      text:maxVals.map(v=>v!=null?'$'+Math.round(v).toLocaleString('es-CL'):''),
+      textposition:'top center', textfont:{{size:10,color:'#c4b5fd'}}}},
+    {{x:vars, y:minVals, type:'scatter', mode:'markers+text', name:'Mín',
+      marker:{{color:'#34d399', size:12, symbol:'circle'}},
+      text:minVals.map(v=>v!=null?'$'+Math.round(v).toLocaleString('es-CL'):''),
+      textposition:'bottom center', textfont:{{size:10,color:'#6ee7b7'}}}},
+  ], {{...DK, xaxis:{{...DK.xaxis,type:'category'}},
+    yaxis:{{...DK.yaxis,title:'MM$'}},
+    shapes: rangeShapes,
+    legend:{{...DK.legend,orientation:'h',x:0,y:1.14}},
     margin:{{t:30,b:40,l:70,r:20}}}}, CFG);
 
   // Tabla
