@@ -56,17 +56,42 @@ df_daes = df_daes.dropna(subset=["Entidad","Año"]).reset_index(drop=True)
 df_cmf_agg = parse_sheet(xls_hs, "🏦 Agregados CMF", 2)
 numify(df_cmf_agg, ["P1 (MM$)","P2 (MM$)","B1g (MM$)","D1 (MM$)","B2g (MM$)","Rem (MM$)","N","PIB Chile (MM$)","Aporte (%)"])
 df_cmf_agg["Año"] = pd.to_numeric(df_cmf_agg["Año"], errors="coerce")
-# FIX: filtrar por Año notna (excluye filas de totales/cabecera)
-df_cmf_agg = df_cmf_agg[df_cmf_agg["Año"].notna()].sort_values("Año").reset_index(drop=True)
+# FIX: filtrar por Año Y Aporte(%) notna — la hoja contiene una 2ª tabla (Cuenta Financiera)
+# debajo de la 1ª (Cuenta de Producción); sin el filtro de Aporte(%) esas filas se duplican
+# con valores de Activos/Patrimonio/F2/F4 leídos como si fueran P1/P2/B1g/etc.
+df_cmf_agg = df_cmf_agg[
+    df_cmf_agg["Año"].notna() & df_cmf_agg["Aporte (%)"].notna()
+].sort_values("Año").reset_index(drop=True)
 
 # ── DAES agg ───────────────────────────────────────────────────────────────────
 df_daes_agg_raw = parse_sheet(xls_hs, "📊 Agregados DAES", 2)
 numify(df_daes_agg_raw, ["P1 (MM$)","P2 (MM$)","B1g (MM$)","D1 (MM$)","B2g (MM$)","Rem (MM$)","D1/B1g","N","PIB Chile (MM$)","Aporte (%)"])
 df_daes_agg_raw["Año"] = pd.to_numeric(df_daes_agg_raw["Año"], errors="coerce")
 # FIX: filtrar por Año Y Aporte(%) notna — excluye fila de totales (Año=NaN, Aporte=0.195)
+# y excluye la 2ª tabla (Cuenta Financiera) que no tiene Aporte(%)
 df_daes_agg = df_daes_agg_raw[
     df_daes_agg_raw["Aporte (%)"].notna() & df_daes_agg_raw["Año"].notna()
 ].sort_values("Año").reset_index(drop=True)
+
+# ── Cuenta Financiera (Activos/Patrimonio/F2/F4) — CMF y DAES ──────────────────
+def parse_financiera(xls, name, hdr_row):
+    """Parsea la 2ª tabla (Cuenta Financiera) de una hoja Agregados.
+    Columnas: Año, N, Activos (MM$), Patrimonio (MM$), F2 Depósitos (MM$),
+              F4 Colocaciones (MM$), F4/Activos, F2/Activos"""
+    df = parse_sheet(xls, name, hdr_row)
+    df.columns = ["Año","N","Activos (MM$)","Patrimonio (MM$)","F2 (MM$)","F4 (MM$)",
+                   "F4/Activos","F2/Activos"] + list(df.columns[8:])
+    for c in ["Año","N","Activos (MM$)","Patrimonio (MM$)","F2 (MM$)","F4 (MM$)","F4/Activos","F2/Activos"]:
+        df[c] = pd.to_numeric(df[c], errors="coerce")
+    df = df[df["Año"].notna() & df["N"].notna()].sort_values("Año").reset_index(drop=True)
+    df["Año"] = df["Año"].astype(int)
+    return df
+
+# CMF: Cuenta Financiera empieza en fila 22 (header), datos desde fila 23
+df_cmf_fin  = parse_financiera(xls_hs, "🏦 Agregados CMF", 22)
+# DAES: Cuenta Financiera empieza en fila 18 (header), datos desde fila 19
+df_daes_fin = parse_financiera(xls_hs, "📊 Agregados DAES", 18)
+
 
 # ── Agregado Total (CMF + DAES) ───────────────────────────────────────────────
 df_total_raw = parse_sheet(xls_hs, "🏦 Agregado Total", 2)
@@ -75,38 +100,6 @@ df_total_raw["Año"] = pd.to_numeric(df_total_raw["Año"], errors="coerce")
 df_total_agg = df_total_raw[
     df_total_raw["Año"].notna() & df_total_raw["Aporte (%)"].notna()
 ].sort_values("Año").reset_index(drop=True)
-
-# ── Feb 2026 ───────────────────────────────────────────────────────────────────
-df_feb_raw = parse_sheet(xls_hs, "📅 CMF Feb-2026", 2)
-numify(df_feb_raw, ["P1 (MM$)","P2 (MM$)","B1g (MM$)","D1 (MM$)","Rem (MM$)","B1g Anualiz. (MM$)","PIB 2025 (MM$)","Aporte (%)"])
-# FIX: excluir fila "TOTAL SEGMENTO CMF" y filas sin RUT
-df_feb = df_feb_raw[
-    df_feb_raw["Entidad"].notna() &
-    df_feb_raw["RUT"].notna() &
-    (~df_feb_raw["Entidad"].astype(str).str.upper().str.contains("TOTAL"))
-].reset_index(drop=True)
-
-# Mapa RUT (formato Feb-2026) → nombre canónico del Panel CMF
-# RUTs verificados desde el Excel CMF Feb-2026
-FEB_RUT_TO_ENT = {
-    "81836800-3": "AHORROCOOP",
-    "84156800-1": "CAPUAL",
-    "70015260-K": "Coocretal",
-    "82878900-7": "Coopeuch Ltda.",
-    "70017860-9": "Detacoop Ltda.",
-    "70286300-7": "CONFIA Ltda.",
-    "70010920-8": "Oriencoop Ltda.",
-}
-
-def feb_nombre(row):
-    rut = str(row["RUT"]).strip() if pd.notna(row["RUT"]) else ""
-    # Intentar match directo
-    if rut in FEB_RUT_TO_ENT:
-        return FEB_RUT_TO_ENT[rut]
-    # Fallback: nombre truncado del Excel
-    return str(row["Entidad"])[:50]
-
-df_feb["Nombre"] = df_feb.apply(feb_nombre, axis=1)
 
 # ── Cooperativas — región ──────────────────────────────────────────────────────
 df_coop = pd.read_excel(EXCEL_COOP, sheet_name="Panel Cooperativas")
@@ -197,6 +190,18 @@ daes_agg_data = {}
 for c in ["Año","N","P1 (MM$)","P2 (MM$)","B1g (MM$)","D1 (MM$)","B2g (MM$)","Rem (MM$)","D1/B1g","PIB Chile (MM$)","Aporte (%)"]:
     if c in df_daes_agg.columns:
         daes_agg_data[c] = [clean(x) for x in df_daes_agg[c].tolist()]
+
+# ── Cuenta Financiera agg (Activos/Patrimonio/F2/F4) ──────────────────────────
+cmf_fin_data = {}
+for c in ["Año","N","Activos (MM$)","Patrimonio (MM$)","F2 (MM$)","F4 (MM$)","F4/Activos","F2/Activos"]:
+    if c in df_cmf_fin.columns:
+        cmf_fin_data[c] = [clean(x) for x in df_cmf_fin[c].tolist()]
+
+daes_fin_data = {}
+for c in ["Año","N","Activos (MM$)","Patrimonio (MM$)","F2 (MM$)","F4 (MM$)","F4/Activos","F2/Activos"]:
+    if c in df_daes_fin.columns:
+        daes_fin_data[c] = [clean(x) for x in df_daes_fin[c].tolist()]
+
 
 # ── DAES por entidad (top 10 B1g acumulado) ───────────────────────────────────
 daes_colors = ["#1a56db","#e74c3c","#27ae60","#f39c12","#8e44ad","#16a085","#d35400","#2980b9","#c0392b","#1abc9c"]
@@ -298,16 +303,81 @@ for ent, grp in df_cmf.groupby("Entidad"):
             "color":      cmf_colors.get(ent, "#555"),
         })
 
+# ── Cobertura de Datos ────────────────────────────────────────────────────────
+def parse_cobertura(xls):
+    raw = xls['Cobertura de Datos'].copy()
+    # DAES: filas 1-13 (header en fila 1+2, datos desde fila 3)
+    # CMF: filas 16-30 (header en fila 16+17, datos desde fila 18)
+    vars_order = ["P1", "D1", "F2", "F4", "Activos", "Patrimonio"]
+
+    def extract_segment(start_hdr, data_start, data_end, universo):
+        rows = []
+        for i in range(data_start, data_end + 1):
+            r = raw.iloc[i]
+            año = pd.to_numeric(r.iloc[0], errors='coerce')
+            if pd.isna(año):
+                continue
+            n_panel = pd.to_numeric(r.iloc[1], errors='coerce')
+            # P1: cols 3(N), 4(%)  | D1: 5(N),6(%) | F2: 7(N),8(%) | F4: 9(N),10(%) | Activos: 11(N),12(%) | Patrimonio: 13(N),14(%)
+            col_pairs = [(3,4),(5,6),(7,8),(9,10),(11,12),(13,14)]
+            entry = {"año": int(año), "N_panel": int(n_panel) if not pd.isna(n_panel) else None,
+                     "universo": universo}
+            for vi, (cn, cp) in zip(vars_order, col_pairs):
+                n_v = pd.to_numeric(r.iloc[cn], errors='coerce')
+                pct_v = pd.to_numeric(r.iloc[cp], errors='coerce')
+                entry[f"{vi}_N"] = int(n_v) if not pd.isna(n_v) else None
+                entry[f"{vi}_pct"] = round(float(pct_v), 6) if not pd.isna(pct_v) else None
+            rows.append(entry)
+        return rows
+
+    daes_rows = extract_segment(1, 3, 13, 35)
+    cmf_rows  = extract_segment(16, 18, 30, 7)
+    return {"DAES": daes_rows, "CMF": cmf_rows}
+
+cobertura_data = parse_cobertura(xls_hs)
+
+# ── Estadística Descriptiva ────────────────────────────────────────────────────
+def parse_estadistica(xls):
+    raw = xls['Estadística Descriptiva'].copy()
+    raw.columns = raw.iloc[1]
+    raw = raw.iloc[2:].reset_index(drop=True)
+    for c in ["Año","N","Media","Mediana","Std","Min","Max"]:
+        if c in raw.columns:
+            raw[c] = pd.to_numeric(raw[c], errors='coerce')
+    raw["Año"] = raw["Año"].astype("Int64")
+    records = []
+    for _, r in raw.iterrows():
+        if pd.isna(r.get("Supervisor")) or pd.isna(r.get("Variable")) or pd.isna(r.get("Año")):
+            continue
+        records.append({
+            "supervisor": str(r["Supervisor"]),
+            "variable":   str(r["Variable"]),
+            "año":        int(r["Año"]),
+            "N":          int(r["N"]) if not pd.isna(r["N"]) else None,
+            "media":      round(float(r["Media"]), 4) if not pd.isna(r["Media"]) else None,
+            "mediana":    round(float(r["Mediana"]), 4) if not pd.isna(r["Mediana"]) else None,
+            "std":        round(float(r["Std"]), 4) if not pd.isna(r["Std"]) else None,
+            "min":        round(float(r["Min"]), 4) if not pd.isna(r["Min"]) else None,
+            "max":        round(float(r["Max"]), 4) if not pd.isna(r["Max"]) else None,
+        })
+    return records
+
+estadistica_data = parse_estadistica(xls_hs)
+
 # ─── JSON FINAL ───────────────────────────────────────────────────────────────
 DATA_JSON = json.dumps({
     "cmf_entities":   cmf_entity_data,
     "cmf_agg":        cmf_agg_data,
     "daes_agg":       daes_agg_data,
+    "cmf_fin":        cmf_fin_data,
+    "daes_fin":       daes_fin_data,
     "total_agg":      total_agg_data,
     "daes_entities":  daes_entity_data,
     "daes_panel":     daes_panel_records,
     "region":         reg_json,
     "cmf_table_all":  cmf_table_all,
+    "cobertura":      cobertura_data,
+    "estadistica":    estadistica_data,
 }, ensure_ascii=False)
 
 # FIX: escapar backticks para que no rompan el template literal de JS
@@ -478,6 +548,8 @@ HTML = f"""<!DOCTYPE html>
   <button class="nb" onclick="show('historico',this)">📈 Serie Histórica CMF</button>
   <button class="nb total-tab" onclick="show('total',this)">🌐 Agregado Total</button>
   <button class="nb" onclick="show('comparativo',this)">⚖️ CMF vs DAES</button>
+  <button class="nb" onclick="show('cobertura',this)">🔍 Cobertura</button>
+  <button class="nb" onclick="show('estadistica',this)">📐 Estad. Descriptiva</button>
   <button class="nb" onclick="show('supuestos',this)">📌 Supuestos</button>
 </nav>
 
@@ -660,7 +732,7 @@ HTML = f"""<!DOCTYPE html>
 <div class="section" id="comparativo">
   <div class="stitle">⚖️ CMF vs DAES — Análisis Comparativo</div>
   <div class="ssub">Comparación de variables clave entre el segmento supervisado CMF y el segmento DAES · cifras en MM$ corrientes</div>
-  <div class="wbox">⚠️ <b>Interpretación cuidadosa:</b> ambos segmentos tienen universos y períodos distintos. El segmento CMF tiene N estable (7); el DAES tiene N variable (2–37). Las diferencias de nivel reflejan también diferencias de cobertura.</div>
+  <div class="wbox">⚠️ <b>Interpretación cuidadosa:</b> ambos segmentos tienen universos y períodos distintos. El segmento CMF tiene N estable (7); el DAES tiene N variable (2–35). Las diferencias de nivel reflejan también diferencias de cobertura.</div>
   <div class="cgrid c2">
     <div class="ccard" style="grid-column:1/-1">
       <div class="ctitle">B1g (VAB bruto) — CMF vs DAES</div>
@@ -700,6 +772,95 @@ HTML = f"""<!DOCTYPE html>
     <div class="ctitle">B1g per cápita (por cooperativa) — CMF vs DAES</div>
     <div class="csub">B1g ÷ N · VAB promedio por cooperativa · permite comparación ajustada por tamaño de muestra</div>
     <div id="ch-comp-percap" style="height:260px"></div>
+  </div>
+</div>
+
+<!-- COBERTURA -->
+<div class="section" id="cobertura">
+  <div class="stitle">Cobertura de Datos</div>
+  <div class="ssub">Proporción del universo CAC con datos disponibles por variable y año · DAES (38 CAC) y CMF (7 CAC)</div>
+  <div class="yr-row" style="margin-bottom:20px">
+    <span class="yr-lbl">Segmento:</span>
+    <button class="sbtn active" id="cob-seg-DAES" onclick="setCobSeg('DAES',this)">DAES</button>
+    <button class="sbtn" id="cob-seg-CMF"  onclick="setCobSeg('CMF',this)">CMF</button>
+  </div>
+  <div class="cgrid c2">
+    <div class="ccard">
+      <div class="ctitle">Cobertura P1 por año</div>
+      <div class="csub">N con dato P1 / Universo</div>
+      <div id="ch-cob-p1" style="height:260px"></div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">Cobertura D1 por año</div>
+      <div class="csub">N con dato D1 / Universo</div>
+      <div id="ch-cob-d1" style="height:260px"></div>
+    </div>
+  </div>
+  <div class="cgrid c3" style="margin-top:16px">
+    <div class="ccard">
+      <div class="ctitle">Cobertura F2 (depósitos)</div>
+      <div class="csub">N con dato / Universo</div>
+      <div id="ch-cob-f2" style="height:220px"></div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">Cobertura F4 (colocaciones)</div>
+      <div class="csub">N con dato / Universo</div>
+      <div id="ch-cob-f4" style="height:220px"></div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">Cobertura Activos / Patrimonio</div>
+      <div class="csub">N con dato / Universo</div>
+      <div id="ch-cob-act" style="height:220px"></div>
+    </div>
+  </div>
+  <div class="ccard" style="margin-top:16px">
+    <div class="ctitle">Tabla resumen de cobertura</div>
+    <div class="csub">N en panel · N con dato por variable · % sobre universo</div>
+    <div class="tw" id="cob-table-wrap"></div>
+  </div>
+</div>
+
+<!-- ESTADÍSTICA DESCRIPTIVA -->
+<div class="section" id="estadistica">
+  <div class="stitle">Estadística Descriptiva</div>
+  <div class="ssub">Media, mediana, desv. estándar, mín. y máx. por variable y año · Cifras en MM$</div>
+  <div class="yr-row" style="margin-bottom:8px">
+    <span class="yr-lbl">Supervisor:</span>
+    <button class="sbtn active" id="est-seg-DAES" onclick="setEstSeg('DAES',this)">DAES</button>
+    <button class="sbtn" id="est-seg-CMF"  onclick="setEstSeg('CMF',this)">CMF</button>
+  </div>
+  <div class="yr-row" style="margin-bottom:20px">
+    <span class="yr-lbl">Año:</span>
+    <span id="est-yr-btns"></span>
+  </div>
+  <div class="cgrid c2">
+    <div class="ccard">
+      <div class="ctitle">Distribución por variable — año seleccionado</div>
+      <div class="csub">Media vs Mediana (barras agrupadas) — escala MM$</div>
+      <div id="ch-est-medmed" style="height:280px"></div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">Dispersión (Std / Media) por variable</div>
+      <div class="csub">Coeficiente de variación — heterogeneidad interna del segmento</div>
+      <div id="ch-est-cv" style="height:280px"></div>
+    </div>
+  </div>
+  <div class="cgrid c2" style="margin-top:16px">
+    <div class="ccard">
+      <div class="ctitle">Evolución de la media — P1 y D1</div>
+      <div class="csub">Serie histórica por supervisor · MM$</div>
+      <div id="ch-est-serie" style="height:260px"></div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">Rango Min–Max por variable</div>
+      <div class="csub">Año seleccionado · amplitud de la distribución</div>
+      <div id="ch-est-range" style="height:260px"></div>
+    </div>
+  </div>
+  <div class="ccard" style="margin-top:16px">
+    <div class="ctitle">Tabla estadística completa</div>
+    <div class="csub" id="est-table-sub">Supervisor y año seleccionados</div>
+    <div class="tw" id="est-table-wrap"></div>
   </div>
 </div>
 
@@ -760,7 +921,12 @@ function show(id, btn) {{
   document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   btn.classList.add('active');
-  if(!renderedSections[id]) {{ renderers[id](); renderedSections[id]=true; }}
+  if(!renderedSections[id]) {{
+    requestAnimationFrame(() => requestAnimationFrame(() => {{
+      renderers[id]();
+      renderedSections[id]=true;
+    }}));
+  }}
 }}
 
 function buildYrBtns(containerId, years, activeFn, onChange) {{
@@ -1109,15 +1275,6 @@ function renderHistorico() {{
     yaxis: {{ ...DK.yaxis, title: 'B1g (MM$)' }},
     legend: {{ ...DK.legend, orientation: 'h', x: 0, y: 1.14 }},
     margin: {{ t: 30, b: 50, l: 75, r: 20 }},
-    shapes: [
-      // Línea vertical: inicio supervisión CMF (2019)
-      {{ type: 'line', x0: 2019, x1: 2019, y0: 0, y1: 1, yref: 'paper',
-         line: {{ color: '#f59e0b', width: 1.2, dash: 'dot' }} }},
-    ],
-    annotations: [
-      {{ x: 2019, y: 1, xref: 'x', yref: 'paper', text: 'Transición<br>CMF', showarrow: false,
-         font: {{ size: 10, color: '#f59e0b' }}, xanchor: 'left', yanchor: 'top', bgcolor: 'rgba(0,0,0,0)' }},
-    ],
   }}, CFG);
 
   // ── Gráfico 2: share por entidad (año seleccionable) ──────────────────
@@ -1406,6 +1563,193 @@ function renderComparativo() {{
     legend:{{...DK.legend,orientation:'h',x:0,y:1.18}},margin:{{t:30,b:40,l:80,r:20}}}}, CFG);
 }}
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 10. COBERTURA DE DATOS
+// ═══════════════════════════════════════════════════════════════════════════
+let cobSeg = 'DAES';
+function setCobSeg(seg, btn) {{
+  cobSeg = seg;
+  document.querySelectorAll('[id^="cob-seg-"]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCobertura();
+}}
+function renderCobertura() {{
+  const rows = D.cobertura[cobSeg] || [];
+  const años   = rows.map(r => r.año);
+  const univ   = rows[0]?.universo || 1;
+  const vars   = ['P1','D1','F2','F4','Activos','Patrimonio'];
+  const labels = {{P1:'P1',D1:'D1',F2:'F2 (depósitos)',F4:'F4 (colocaciones)',Activos:'Activos',Patrimonio:'Patrimonio'}};
+  const colMap = {{P1:'#3b82f6',D1:'#10b981',F2:'#f59e0b',F4:'#8b5cf6',Activos:'#ec4899',Patrimonio:'#06b6d4'}};
+  const pctN  = v => v['P1_N']??0;
+
+  function barChart(divId, varKey) {{
+    const ns   = rows.map(r => r[varKey+'_N'] ?? 0);
+    const pcts = rows.map(r => (r[varKey+'_pct'] ?? 0) * 100);
+    Plotly.newPlot(divId, [
+      {{x:años, y:pcts, type:'bar', name:'% cobertura',
+        marker:{{color:colMap[varKey],opacity:.85}},
+        text:pcts.map((p,i)=>`${{ns[i]}}/${{univ}}`), textposition:'outside',
+        hovertemplate:'Año %{{x}}<br>N=%{{text}}<br>Cob=%{{y:.1f}}%<extra></extra>'}},
+      {{x:años, y:años.map(()=>100), type:'scatter', mode:'lines',
+        name:'100%', line:{{color:'#4b5563',dash:'dot',width:1}}, showlegend:false}},
+    ], {{...DK, yaxis:{{...DK.yaxis,title:'% del universo',range:[0,115]}},
+      margin:{{t:10,b:40,l:55,r:20}}}}, CFG);
+  }}
+
+  barChart('ch-cob-p1','P1');
+  barChart('ch-cob-d1','D1');
+  barChart('ch-cob-f2','F2');
+  barChart('ch-cob-f4','F4');
+
+  // Activos + Patrimonio combinado
+  const actNs  = rows.map(r => (r['Activos_pct']??0)*100);
+  const patNs  = rows.map(r => (r['Patrimonio_pct']??0)*100);
+  Plotly.newPlot('ch-cob-act', [
+    {{x:años, y:actNs, type:'bar', name:'Activos',  marker:{{color:'#ec4899',opacity:.85}}}},
+    {{x:años, y:patNs, type:'bar', name:'Patrimonio',marker:{{color:'#06b6d4',opacity:.85}}}},
+  ], {{...DK, barmode:'group', yaxis:{{...DK.yaxis,title:'% del universo',range:[0,120]}},
+    legend:{{...DK.legend,orientation:'h',x:0,y:1.14}},
+    margin:{{t:30,b:40,l:55,r:20}}}}, CFG);
+
+  // Tabla
+  let h = `<table><thead><tr>
+    <th>Año</th><th>N panel</th><th>Universo</th>
+    <th>P1 N</th><th>P1 %</th><th>D1 N</th><th>D1 %</th>
+    <th>F2 N</th><th>F2 %</th><th>F4 N</th><th>F4 %</th>
+    <th>Activos N</th><th>Activos %</th><th>Patrimonio N</th><th>Patrimonio %</th>
+  </tr></thead><tbody>`;
+  rows.forEach(r => {{
+    const fmt = (v) => v!==null ? (v*100).toFixed(1)+'%' : '—';
+    h += `<tr>
+      <td style="font-weight:600">${{r.año}}</td>
+      <td>${{r.N_panel??'—'}}</td><td>${{r.universo}}</td>
+      <td>${{r.P1_N??'—'}}</td><td>${{fmt(r.P1_pct)}}</td>
+      <td>${{r.D1_N??'—'}}</td><td>${{fmt(r.D1_pct)}}</td>
+      <td>${{r.F2_N??'—'}}</td><td>${{fmt(r.F2_pct)}}</td>
+      <td>${{r.F4_N??'—'}}</td><td>${{fmt(r.F4_pct)}}</td>
+      <td>${{r.Activos_N??'—'}}</td><td>${{fmt(r.Activos_pct)}}</td>
+      <td>${{r.Patrimonio_N??'—'}}</td><td>${{fmt(r.Patrimonio_pct)}}</td>
+    </tr>`;
+  }});
+  document.getElementById('cob-table-wrap').innerHTML = h + '</tbody></table>';
+}}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 11. ESTADÍSTICA DESCRIPTIVA
+// ═══════════════════════════════════════════════════════════════════════════
+let estSeg = 'DAES';
+let estYear = null;
+function setEstSeg(seg, btn) {{
+  estSeg = seg;
+  document.querySelectorAll('[id^="est-seg-"]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  estYear = null;
+  renderEstadistica();
+}}
+window.setEstYear = function(yr) {{
+  estYear = yr;
+  document.querySelectorAll('#est-yr-btns .ybtn').forEach(b =>
+    b.classList.toggle('active', parseInt(b.textContent) === yr));
+  renderEstadisticaCharts();
+}};
+function renderEstadistica() {{
+  const recs = D.estadistica.filter(r => r.supervisor === estSeg);
+  const años = [...new Set(recs.map(r => r.año))].sort();
+  if (!estYear || !años.includes(estYear)) estYear = años[años.length - 1];
+  document.getElementById('est-yr-btns').innerHTML = años.map(y =>
+    `<button class="ybtn${{y===estYear?' active':''}}" onclick="setEstYear(${{y}})">${{y}}</button>`
+  ).join('');
+  renderEstadisticaCharts();
+  // Serie histórica (siempre se pinta entera)
+  renderEstSerie();
+}}
+function renderEstadisticaCharts() {{
+  const recs = D.estadistica.filter(r => r.supervisor === estSeg && r.año === estYear);
+  const vars = [...new Set(recs.map(r => r.variable))];
+  const mediaVals   = vars.map(v => recs.find(r=>r.variable===v)?.media   ?? null);
+  const medianaVals = vars.map(v => recs.find(r=>r.variable===v)?.mediana ?? null);
+  const stdVals     = vars.map(v => recs.find(r=>r.variable===v)?.std     ?? null);
+  const minVals     = vars.map(v => recs.find(r=>r.variable===v)?.min     ?? null);
+  const maxVals     = vars.map(v => recs.find(r=>r.variable===v)?.max     ?? null);
+  const cvVals      = vars.map((v,i) => mediaVals[i]&&mediaVals[i]>0 ? (stdVals[i]||0)/mediaVals[i] : null);
+  const colAcc = '#3b82f6';
+  const colAcc2= '#10b981';
+
+  document.getElementById('est-table-sub').textContent =
+    `Supervisor: ${{estSeg}} · Año: ${{estYear}}`;
+
+  // Media vs Mediana
+  Plotly.newPlot('ch-est-medmed', [
+    {{x:vars, y:mediaVals,   type:'bar', name:'Media',   marker:{{color:colAcc,opacity:.85}}}},
+    {{x:vars, y:medianaVals, type:'bar', name:'Mediana', marker:{{color:colAcc2,opacity:.85}}}},
+  ], {{...DK, barmode:'group', xaxis:{{...DK.xaxis,type:'category'}}, yaxis:{{...DK.yaxis,title:'MM$'}},
+    legend:{{...DK.legend,orientation:'h',x:0,y:1.12}},
+    margin:{{t:30,b:40,l:70,r:20}}}}, CFG);
+
+  // Coeficiente de variación
+  Plotly.newPlot('ch-est-cv', [
+    {{x:vars, y:cvVals, type:'bar', name:'CV (Std/Media)',
+      marker:{{color:cvVals.map(v => v===null?'#4b5563':v>1.5?'#ef4444':v>0.8?'#f59e0b':'#10b981')}},
+      text:cvVals.map(v=>v!==null?v.toFixed(2):'—'), textposition:'outside'}},
+  ], {{...DK, xaxis:{{...DK.xaxis,type:'category'}}, yaxis:{{...DK.yaxis,title:'CV (adimensional)'}},
+    margin:{{t:10,b:40,l:60,r:20}}}}, CFG);
+
+  // Rango Min–Max
+  const baseArr = vars.map(() => 0);
+  Plotly.newPlot('ch-est-range', [
+    {{x:vars, y:maxVals, type:'bar', name:'Máx', marker:{{color:'#6366f1',opacity:.7}}}},
+    {{x:vars, y:mediaVals, type:'scatter', mode:'markers', name:'Media',
+      marker:{{color:'#f59e0b',size:10,symbol:'diamond'}}}},
+    {{x:vars, y:medianaVals, type:'scatter', mode:'markers', name:'Mediana',
+      marker:{{color:'#10b981',size:8,symbol:'circle'}}}},
+    {{x:vars, y:minVals, type:'bar', name:'Mín', marker:{{color:'#8b5cf6',opacity:.5}}}},
+  ], {{...DK, barmode:'overlay', xaxis:{{...DK.xaxis,type:'category'}}, yaxis:{{...DK.yaxis,title:'MM$'}},
+    legend:{{...DK.legend,orientation:'h',x:0,y:1.12}},
+    margin:{{t:30,b:40,l:70,r:20}}}}, CFG);
+
+  // Tabla
+  const nMap = {{}};
+  recs.forEach(r => nMap[r.variable] = r.N);
+  let h = `<table><thead><tr>
+    <th>Variable</th><th>N</th><th>Media (MM$)</th><th>Mediana (MM$)</th>
+    <th>Std (MM$)</th><th>CV</th><th>Mín (MM$)</th><th>Máx (MM$)</th>
+  </tr></thead><tbody>`;
+  vars.forEach((v,i) => {{
+    const cv = cvVals[i];
+    const cvColor = cv===null?'#94a3b8':cv>1.5?'#ef4444':cv>0.8?'#f59e0b':'#10b981';
+    h += `<tr>
+      <td style="font-weight:600">${{v}}</td>
+      <td>${{nMap[v]??'—'}}</td>
+      <td>${{mediaVals[i]!==null?'$'+mediaVals[i].toLocaleString('es-CL',{{maximumFractionDigits:0}}):'—'}}</td>
+      <td>${{medianaVals[i]!==null?'$'+medianaVals[i].toLocaleString('es-CL',{{maximumFractionDigits:0}}):'—'}}</td>
+      <td>${{stdVals[i]!==null?'$'+stdVals[i].toLocaleString('es-CL',{{maximumFractionDigits:0}}):'—'}}</td>
+      <td style="color:${{cvColor}};font-weight:600">${{cv!==null?cv.toFixed(3):'—'}}</td>
+      <td>${{minVals[i]!==null?'$'+minVals[i].toLocaleString('es-CL',{{maximumFractionDigits:0}}):'—'}}</td>
+      <td>${{maxVals[i]!==null?'$'+maxVals[i].toLocaleString('es-CL',{{maximumFractionDigits:0}}):'—'}}</td>
+    </tr>`;
+  }});
+  document.getElementById('est-table-wrap').innerHTML = h + '</tbody></table>';
+}}
+function renderEstSerie() {{
+  // Serie histórica media de P1 y D1 para el segmento activo
+  const recs = D.estadistica.filter(r => r.supervisor === estSeg);
+  const años = [...new Set(recs.map(r => r.año))].sort();
+  function serie(varName) {{
+    return años.map(y => {{
+      const r = recs.find(r2 => r2.variable===varName && r2.año===y);
+      return r?.media ?? null;
+    }});
+  }}
+  Plotly.newPlot('ch-est-serie', [
+    {{x:años, y:serie('P1'), type:'lines+markers', mode:'lines+markers', name:'Media P1',
+      line:{{color:'#3b82f6',width:2}}, marker:{{size:6,color:'#3b82f6'}}}},
+    {{x:años, y:serie('D1'), type:'lines+markers', mode:'lines+markers', name:'Media D1',
+      line:{{color:'#10b981',width:2}}, marker:{{size:6,color:'#10b981'}}}},
+  ], {{...DK, yaxis:{{...DK.yaxis,title:'MM$'}},
+    legend:{{...DK.legend,orientation:'h',x:0,y:1.14}},
+    margin:{{t:30,b:40,l:70,r:20}}}}, CFG);
+}}
+
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 const renderers = {{
   overview:    renderOverview,
@@ -1416,6 +1760,8 @@ const renderers = {{
   historico:   renderHistorico,
   total:       renderTotal,
   comparativo: renderComparativo,
+  cobertura:   renderCobertura,
+  estadistica: renderEstadistica,
   supuestos:   renderSupuestos,
 }};
 renderOverview();
