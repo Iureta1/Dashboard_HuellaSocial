@@ -104,6 +104,8 @@ df_total_agg = df_total_raw[
 # ── Cooperativas — región ──────────────────────────────────────────────────────
 df_coop = pd.read_excel(EXCEL_COOP, sheet_name="Panel Cooperativas")
 cac_reg = df_coop[df_coop["Subrubro"] == "Ahorro y Crédito"].copy()
+cac_reg["_rut_norm"] = cac_reg["RUT"].astype(str).str.replace(r"\s+", "", regex=True).str.upper()
+cac_reg = cac_reg.drop_duplicates(subset="_rut_norm", keep="first").drop(columns="_rut_norm")
 for c in ["Total Socios","sii_trabajadores","cmf_empleados","cmf_oficinas"]:
     cac_reg[c] = pd.to_numeric(cac_reg[c], errors="coerce")
 
