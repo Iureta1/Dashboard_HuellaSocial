@@ -970,7 +970,7 @@ function renderOverview() {{
     {{x:años,y:ap,type:'scatter',mode:'lines+markers',name:'Aporte PIB (%)',
       marker:{{color:'#10b981',size:7}},line:{{color:'#10b981',width:2}},yaxis:'y2'}}
   ],{{...DK,yaxis:{{...DK.yaxis,title:'MM$'}},
-      yaxis2:{{title:'% PIB',overlaying:'y',side:'right',gridcolor:'transparent',tickformat:'.3f'}},
+      yaxis2:{{title:'% PIB',overlaying:'y',side:'right',gridcolor:'transparent',tickformat:'.3f',range:[0,0.13]}},
       legend:{{...DK.legend,orientation:'h',x:0,y:1.18}}}},CFG);
 
   Plotly.newPlot('ch-cmf-pila',[
