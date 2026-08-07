@@ -1,5 +1,7 @@
 # Huella Social — Dashboard Cuenta Satélite CAC Chile
 
+**[Ver el dashboard en línea](https://iureta1.github.io/Dashboard_HuellaSocial/)**
+
 Dashboard interactivo que estima el aporte de las Cooperativas de Ahorro y Crédito (CAC) al PIB chileno, construido como parte de una memoria de título en Ingeniería Civil Industrial en la Universidad de los Andes (2026).
 
 **Autores:** Ignacio Ureta · Antonio Ruiz Tagle · **Supervisores:** Sebastián Cea · Joaquín Fernández
